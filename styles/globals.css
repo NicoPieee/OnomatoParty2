@@ -1,43 +1,59 @@
+/* Google FontsからMontserratを利用する場合、必要に応じてHTMLの<head>にリンクを追加する */
+/* 例: <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet"> */
+
 /* 基本のレイアウト */
 body {
-  font-family: Arial, sans-serif;
-  background-color: #f9f9f9;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 500;
+  background-color: #e0f7fa; /* 水色ベース */
   margin: 0;
   padding: 0;
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100vh;
+  min-height: 100vh;
 }
 
 /* メインコンテナ */
-div {
-  text-align: center;
-  background-color: white;
-  padding: 30px;
-  border-radius: 8px;
-  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
-  max-width: 500px;
+.container {
+  background: #ffffff;
+  padding: 30px 40px;
+  border-radius: 10px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+  max-width: 900px;
   width: 100%;
+  text-align: center;
+  transition: transform 0.2s ease;
+}
+.container:hover {
+  transform: translateY(-2px);
 }
 
-/* ヘッダー */
+/* タイトル・見出し */
 h1 {
   font-size: 2.5rem;
-  color: #333;
+  color: #0077c2;
   margin-bottom: 20px;
+  font-weight: 700;
+}
+h2, h3 {
+  color: #0077c2;
+  margin: 20px 0;
+  font-weight: 700;
 }
 
 /* 入力フィールド */
 input {
-  padding: 10px;
+  padding: 12px;
   font-size: 1rem;
   width: 80%;
-  max-width: 400px;
-  margin: 10px 0;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+  max-width: 500px;
+  margin: 10px auto;
+  display: block;
+  border: 2px solid #0077c2;
+  border-radius: 6px;
   outline: none;
+  transition: border-color 0.2s;
 }
 
 input:focus {
@@ -46,41 +62,145 @@ input:focus {
 
 /* ボタン */
 button {
-  padding: 10px 20px;
+  padding: 12px 24px;
   font-size: 1rem;
-  background-color: #4CAF50;
-  color: white;
+  background-color: #00bcd4;
+  color: #fff;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
-  margin-top: 10px;
-  transition: background-color 0.3s;
+  margin: 10px;
+  transition: background-color 0.3s, transform 0.2s;
 }
 
 button:hover {
-  background-color: #45a049;
+  background-color: #0097a7;
+  transform: translateY(-2px);
 }
 
-/* プレイヤーリスト */
+/* ボタングループ */
+.button-group {
+  margin: 20px 0;
+}
+
+/* エラーメッセージ */
+.error {
+  color: red;
+  margin: 10px 0;
+  font-weight: 700;
+}
+
+/* ルームID表示 */
+.room-id {
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: #0077c2;
+}
+
+/* リスト共通 */
 ul {
-  list-style-type: none;
+  list-style: none;
   padding: 0;
-  margin-top: 20px;
+  margin: 20px 0;
 }
 
 li {
-  padding: 5px;
+  padding: 10px;
   font-size: 1.1rem;
   color: #555;
-  border-bottom: 1px solid #ddd;
+  margin-bottom: 10px;
+  transition: background-color 0.2s;
 }
 
 li:last-child {
-  border-bottom: none;
+  margin-bottom: 0;
+}
+li:hover {
+  background-color: #e0f7fa;
 }
 
-/* ゲームの進行部分 */
-h2 {
-  font-size: 1.5rem;
-  margin-top: 30px;
+/* ゲーム画面のレイアウト */
+.game-screen {
+  display: flex;
+  width: 100%;
+  gap: 20px;
+  align-items: stretch;
+}
+
+/* サイドバー（プレイヤーリスト） */
+.sidebar {
+  flex: 0 0 220px;
+  background-color: #b2ebf2;
+  padding: 20px;
+  border-radius: 8px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+/* プレイヤーリスト内の各プレイヤー名に枠を付与 */
+.sidebar ul li {
+  border-radius: 4px;
+  padding: 8px;
+  margin-bottom: 10px;
+  background-color: #ffffff;
+}
+
+/* メインエリア（カード表示など） */
+.main {
+  flex: 1;
+  background-color: #ffffff;
+  padding: 20px;
+  border-radius: 8px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+/* カード画像：最大幅600px、比率維持 */
+.card-img {
+  max-width: 600px;
+  height: auto;
+  display: block;
+  margin: 20px auto;
+  border: 10px solid #ffffff;
+  border-radius: 8px;
+  transition: box-shadow 0.3s, transform 0.3s;
+}
+.card-img:hover {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+  transform: translateY(-2px);
+}
+
+/* アクションエリア */
+.action-area {
+  margin-top: auto;
+}
+
+/* アクションボタン */
+.action-btn {
+  background-color: #00acc1;
+  margin: 10px;
+  border-radius: 6px;
+}
+.action-btn:hover {
+  background-color: #0097a7;
+  transform: translateY(-2px);
+}
+
+/* 子プレイヤー用アクション */
+.child-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* 戻るボタン */
+.back-btn {
+  background-color: #0077c2;
+}
+.back-btn:hover {
+  background-color: #0066a1;
 }

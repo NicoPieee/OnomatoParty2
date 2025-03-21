@@ -14,11 +14,12 @@ export default function Home() {
   const [currentCard, setCurrentCard] = useState(null);
   const [onomatopoeia, setOnomatopoeia] = useState("");
   const [winner, setWinner] = useState(null);
+  const [parentPlayer, setParentPlayer] = useState(null);
   const [gameState, setGameState] = useState("title"); // "title", "createRoom", "joinRoom", "waiting", "game", "gameOver"
   const [availableRooms, setAvailableRooms] = useState([]);
   const [errorMessage, setErrorMessage] = useState("");
 
-  // 自動生成：createRoom 画面に入ったら部屋IDを生成
+  // 自動生成：createRoom画面に入ったら部屋IDを生成
   useEffect(() => {
     if (gameState === "createRoom") {
       setRoomId(generateRoomId());
@@ -29,7 +30,6 @@ export default function Home() {
     if (!socketRef.current) {
       socketRef.current = io("http://localhost:5000");
 
-      // 自分のIDを取得
       socketRef.current.on("connect", () => {
         setMyId(socketRef.current.id);
       });
@@ -40,6 +40,7 @@ export default function Home() {
 
       socketRef.current.on("gameStarted", (player) => {
         alert(`${player.name}が親プレイヤーになりました！`);
+        setParentPlayer(player);
         setGameState("game");
       });
 
@@ -48,7 +49,6 @@ export default function Home() {
       });
 
       socketRef.current.on("gameOver", (winnerData) => {
-        console.log("ゲーム終了イベント受信:", winnerData);
         setWinner(winnerData);
         setGameState("gameOver");
       });
@@ -58,12 +58,10 @@ export default function Home() {
       });
 
       socketRef.current.on("error", (message) => {
-        console.error("Error: ", message);
         setErrorMessage(message);
         setTimeout(() => setErrorMessage(""), 3000);
       });
 
-      // 初回にルーム一覧を取得
       socketRef.current.emit("getRooms");
     }
 
@@ -75,15 +73,14 @@ export default function Home() {
     };
   }, []);
 
-  // 部屋作成と自動参加を同時に行う関数（修正版）
-  // ここでは、サーバー側の createRoom イベントで自動参加処理が実行されるので joinRoom を送らない
+  // 部屋作成時は createRoom イベントのみ（サーバー側で自動参加処理を行う）
   const createAndJoinRoom = () => {
     if (!roomId || !playerName) return;
     socketRef.current.emit("createRoom", { roomId, playerName });
     setGameState("waiting");
   };
 
-  // 参加の場合は joinRoom イベントを送信
+  // 参加の場合
   const joinRoom = () => {
     if (!roomId || !playerName) return;
     socketRef.current.emit("joinRoom", { roomId, playerName });
@@ -108,34 +105,40 @@ export default function Home() {
     socketRef.current.emit("getRooms");
   };
 
+  // 各画面のレンダリング
+
   const renderTitleScreen = () => (
-    <div>
+    <div className="screen">
       <h1>OnomatoParty2</h1>
-      <button onClick={() => setGameState("createRoom")}>部屋を作成</button>
-      <button onClick={() => setGameState("joinRoom")}>部屋に参加</button>
+      <div className="button-group">
+        <button onClick={() => setGameState("createRoom")}>部屋を作成</button>
+        <button onClick={() => setGameState("joinRoom")}>部屋に参加</button>
+      </div>
     </div>
   );
 
   const renderCreateRoomScreen = () => (
-    <div>
+    <div className="screen">
       <h2>部屋を作成</h2>
-      {errorMessage && <p style={{ color: "red" }}>{errorMessage}</p>}
-      <p>自動生成された部屋ID: {roomId}</p>
+      {errorMessage && <p className="error">{errorMessage}</p>}
+      <p className="room-id">自動生成された部屋ID: {roomId}</p>
       <input
         type="text"
         placeholder="プレイヤー名を入力"
         value={playerName}
         onChange={(e) => setPlayerName(e.target.value)}
       />
-      <button onClick={createAndJoinRoom}>部屋を作成＆自動参加</button>
-      <button onClick={() => setGameState("title")}>戻る</button>
+      <div className="button-group">
+        <button onClick={createAndJoinRoom}>部屋作成＆自動参加</button>
+        <button onClick={() => setGameState("title")}>戻る</button>
+      </div>
     </div>
   );
 
   const renderJoinRoomScreen = () => (
-    <div>
+    <div className="screen">
       <h2>部屋に参加</h2>
-      {errorMessage && <p style={{ color: "red" }}>{errorMessage}</p>}
+      {errorMessage && <p className="error">{errorMessage}</p>}
       <input
         type="text"
         placeholder="部屋IDを入力または選択"
@@ -148,18 +151,16 @@ export default function Home() {
         value={playerName}
         onChange={(e) => setPlayerName(e.target.value)}
       />
-      <button onClick={joinRoom}>部屋に参加</button>
-      <button onClick={refreshRooms}>ルーム一覧を更新</button>
-      <div>
+      <div className="button-group">
+        <button onClick={joinRoom}>部屋に参加</button>
+        <button onClick={refreshRooms}>ルーム一覧更新</button>
+      </div>
+      <div className="room-list">
         <h3>利用可能な部屋</h3>
         <ul>
           {availableRooms.length > 0 ? (
             availableRooms.map((room, index) => (
-              <li
-                key={index}
-                onClick={() => setRoomId(room)}
-                style={{ cursor: "pointer" }}
-              >
+              <li key={index} onClick={() => setRoomId(room)}>
                 {room}
               </li>
             ))
@@ -173,64 +174,78 @@ export default function Home() {
   );
 
   const renderWaitingScreen = () => (
-    <div>
+    <div className="screen">
       <h2>待機画面</h2>
-      <p>部屋ID: {roomId}</p>
-      <p>参加者:</p>
-      <ul>
-        {players.map((player, index) => (
-          <li key={index}>
-            {player.name} {player.isCPU ? "(Bot)" : ""}
-            {index === 0 && " [部屋作成者]"}
-          </li>
-        ))}
-      </ul>
+      <p className="room-id">部屋ID: {roomId}</p>
+      <div className="players">
+        <h3>参加者</h3>
+        <ul>
+          {players.map((player, index) => (
+            <li key={index}>
+              {player.name} {player.isCPU ? "(Bot)" : ""}
+              {index === 0 && " [部屋作成者]"}
+            </li>
+          ))}
+        </ul>
+      </div>
       {players.length > 0 && players[0].id === myId ? (
-        <button onClick={startGame}>ゲーム開始</button>
+        <button onClick={startGame} className="start-btn">
+          ゲーム開始
+        </button>
       ) : (
         <p>部屋作成者の開始待ち...</p>
       )}
-      <button onClick={() => setGameState("title")}>戻る</button>
+      <button onClick={() => setGameState("title")} className="back-btn">
+        戻る
+      </button>
     </div>
   );
 
   const renderGameScreen = () => (
-    <div>
-      <h2>ゲーム画面</h2>
-      <button onClick={startGame}>ゲーム開始</button>
-      <button onClick={drawCard}>カードを引く</button>
-      <h3>現在のカード:</h3>
-      {currentCard && (
-        <img
-          src={`/images/${currentCard}`}
-          alt="現在のカード"
-          style={{ width: "300px", height: "auto" }}
-        />
-      )}
-      <input
-        type="text"
-        placeholder="オノマトペを入力"
-        value={onomatopoeia}
-        onChange={(e) => setOnomatopoeia(e.target.value)}
-      />
-      <button onClick={submitOnomatopoeia}>オノマトペを送信</button>
-      <h3>プレイヤーリスト</h3>
-      <ul>
-        {players.map((player, index) => (
-          <li key={index}>{player.name}</li>
-        ))}
-      </ul>
-      {gameState === "gameOver" && winner && (
-        <div>
-          <h2>ゲーム終了</h2>
-          <h3>勝者: {winner.name}</h3>
+    <div className="game-screen">
+      <div className="sidebar">
+        <h3>プレイヤー</h3>
+        <ul>
+          {players.map((player, index) => (
+            <li key={index}>
+              {player.name} {player.id === parentPlayer?.id ? "[親]" : "[子]"}
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="main">
+        <h3>現在のカード</h3>
+        {currentCard ? (
+          <img src={`/images/${currentCard}`} alt="現在のカード" className="card-img" />
+        ) : (
+          <p>カードがありません</p>
+        )}
+        <div className="action-area">
+          {parentPlayer && myId === parentPlayer.id ? (
+            <button onClick={drawCard} className="action-btn">
+              カードを引く
+            </button>
+          ) : (
+            <div className="child-actions">
+              <input
+                type="text"
+                placeholder="オノマトペを入力"
+                value={onomatopoeia}
+                onChange={(e) => setOnomatopoeia(e.target.value)}
+              />
+              <button onClick={submitOnomatopoeia} className="action-btn">
+                オノマトペ送信
+              </button>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
+  
 
   return (
-    <div>
+    <div className="container">
       {gameState === "title" && renderTitleScreen()}
       {gameState === "createRoom" && renderCreateRoomScreen()}
       {gameState === "joinRoom" && renderJoinRoomScreen()}
