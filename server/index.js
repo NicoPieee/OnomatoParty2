@@ -24,10 +24,13 @@ io.on('connection', (socket) => {
 
     // 部屋を作成
     socket.on('createRoom', (roomId) => {
-        if (!rooms[roomId]) {
-            rooms[roomId] = [];
+        if (rooms[roomId]) {
+            socket.emit('error', 'Room already exists');
+            return;
         }
+        rooms[roomId] = [];
         console.log(`Room ${roomId} created`);
+        io.emit('roomsList', Object.keys(rooms)); // 全クライアントに最新ルーム一覧を送信
     });
 
     // 部屋に参加
@@ -36,8 +39,14 @@ io.on('connection', (socket) => {
             socket.emit('error', 'Room does not exist');
             return;
         }
-
-        rooms[roomId].push({ id: socket.id, name: playerName });
+        // 同じプレイヤー名が存在しないかチェック
+        const duplicate = rooms[roomId].find(player => player.name === playerName);
+        if (duplicate) {
+            socket.emit('error', 'Player name already taken in this room');
+            return;
+        }
+        // プレイヤーのスコアを初期化して追加
+        rooms[roomId].push({ id: socket.id, name: playerName, points: 0 });
         socket.join(roomId);
 
         console.log(`${playerName} joined room ${roomId}`);
@@ -47,27 +56,64 @@ io.on('connection', (socket) => {
     // ゲーム開始
     socket.on('startGame', (roomId) => {
         const roomPlayers = rooms[roomId];
+        if (!roomPlayers || roomPlayers.length === 0) {
+            socket.emit('error', 'No players in room');
+            return;
+        }
         currentTurnPlayerIndex = Math.floor(Math.random() * roomPlayers.length); // ランダムで親プレイヤーを選ぶ
-        io.to(roomId).emit('gameStarted', roomPlayers[currentTurnPlayerIndex]); // 親プレイヤーをクライアントに送信
+        io.to(roomId).emit('gameStarted', roomPlayers[currentTurnPlayerIndex]);
     });
 
     // カードを引く
     socket.on('drawCard', (roomId) => {
-        if (socket.id !== rooms[roomId][currentTurnPlayerIndex].id) return; // 親プレイヤーだけがカードを引ける
-        currentCard = "カードの内容"; // ここにカードのロジックを追加
-        io.to(roomId).emit('cardDrawn', currentCard); // カードをクライアントに送信
+        if (!rooms[roomId]) {
+            socket.emit('error', 'Room does not exist');
+            return;
+        }
+        if (socket.id !== rooms[roomId][currentTurnPlayerIndex].id) return; // 親プレイヤーのみ
+        currentCard = "カードの内容"; // ここでカード生成のロジックを拡張可能
+        io.to(roomId).emit('cardDrawn', currentCard);
     });
 
-    // 切断時に部屋から削除
+    socket.on('submitOnomatopoeia', (roomId, onomatopoeia) => {
+        io.to(roomId).emit('chooseOnomatopoeia', onomatopoeia);
+    });
+
+    socket.on('nextTurn', (roomId) => {
+        const roomPlayers = rooms[roomId];
+        if (!roomPlayers) return;
+        currentTurnPlayerIndex = (currentTurnPlayerIndex + 1) % roomPlayers.length;
+        io.to(roomId).emit('newTurn', roomPlayers[currentTurnPlayerIndex]);
+    });
+
+    socket.on('chooseOnomatopoeia', (roomId, chosenOnomatopoeia) => {
+        io.to(roomId).emit('onomatopoeiaChosen', chosenOnomatopoeia);
+    });
+
+    socket.on('endGame', (roomId) => {
+        const roomPlayers = rooms[roomId];
+        if (!roomPlayers || roomPlayers.length === 0) {
+            socket.emit('error', 'Room does not exist or no players');
+            return;
+        }
+        let winner = roomPlayers.reduce((prev, current) => (prev.points > current.points ? prev : current));
+        io.to(roomId).emit('gameOver', winner);
+    });
+
+    // ルーム一覧取得リクエスト
+    socket.on('getRooms', () => {
+        socket.emit('roomsList', Object.keys(rooms));
+    });
+
+    // 切断時の処理
     socket.on('disconnect', () => {
         for (const roomId in rooms) {
             rooms[roomId] = rooms[roomId].filter(player => player.id !== socket.id);
             io.to(roomId).emit('updatePlayers', rooms[roomId]);
-
-            // 🔥 部屋のプレイヤーが0人なら削除
             if (rooms[roomId].length === 0) {
                 delete rooms[roomId];
                 console.log(`Room ${roomId} deleted`);
+                io.emit('roomsList', Object.keys(rooms)); // 削除後のルーム一覧更新
             }
         }
         console.log(`Client disconnected: ${socket.id}`);
