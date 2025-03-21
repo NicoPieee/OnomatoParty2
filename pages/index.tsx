@@ -7,6 +7,7 @@ const generateRoomId = () => {
 
 export default function Home() {
   const socketRef = useRef(null);
+  const [myId, setMyId] = useState(null);
   const [roomId, setRoomId] = useState("");
   const [playerName, setPlayerName] = useState("");
   const [players, setPlayers] = useState([]);
@@ -17,7 +18,7 @@ export default function Home() {
   const [availableRooms, setAvailableRooms] = useState([]);
   const [errorMessage, setErrorMessage] = useState("");
 
-  // 自動生成の処理：createRoom画面に入ったら部屋IDを生成
+  // 自動生成：createRoom 画面に入ったら部屋IDを生成
   useEffect(() => {
     if (gameState === "createRoom") {
       setRoomId(generateRoomId());
@@ -27,6 +28,11 @@ export default function Home() {
   useEffect(() => {
     if (!socketRef.current) {
       socketRef.current = io("http://localhost:5000");
+
+      // 自分のIDを取得
+      socketRef.current.on("connect", () => {
+        setMyId(socketRef.current.id);
+      });
 
       socketRef.current.on("updatePlayers", (players) => {
         setPlayers(players);
@@ -69,14 +75,15 @@ export default function Home() {
     };
   }, []);
 
-  // 部屋作成と自動参加を同時に行う関数
+  // 部屋作成と自動参加を同時に行う関数（修正版）
+  // ここでは、サーバー側の createRoom イベントで自動参加処理が実行されるので joinRoom を送らない
   const createAndJoinRoom = () => {
     if (!roomId || !playerName) return;
-    socketRef.current.emit("createRoom", roomId);
-    socketRef.current.emit("joinRoom", { roomId, playerName });
+    socketRef.current.emit("createRoom", { roomId, playerName });
     setGameState("waiting");
   };
 
+  // 参加の場合は joinRoom イベントを送信
   const joinRoom = () => {
     if (!roomId || !playerName) return;
     socketRef.current.emit("joinRoom", { roomId, playerName });
@@ -174,10 +181,16 @@ export default function Home() {
         {players.map((player, index) => (
           <li key={index}>
             {player.name} {player.isCPU ? "(Bot)" : ""}
+            {index === 0 && " [部屋作成者]"}
           </li>
         ))}
       </ul>
-      <button onClick={startGame}>ゲーム開始</button>
+      {players.length > 0 && players[0].id === myId ? (
+        <button onClick={startGame}>ゲーム開始</button>
+      ) : (
+        <p>部屋作成者の開始待ち...</p>
+      )}
+      <button onClick={() => setGameState("title")}>戻る</button>
     </div>
   );
 

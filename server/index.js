@@ -15,18 +15,18 @@ const io = new Server(server, {
   }
 });
 
-const rooms = {}; // 部屋ごとの情報を管理（players と deck を保持）
+const rooms = {}; // 各部屋の情報を管理（players と deck を保持）
 
 io.on('connection', (socket) => {
   console.log(`New client connected: ${socket.id}`);
 
-  // 部屋を作成するイベント
-  socket.on('createRoom', (roomId) => {
+  // 部屋作成イベント：部屋作成時に、部屋ID とプレイヤー名が渡されれば自動参加処理を行う
+  socket.on('createRoom', ({ roomId, playerName }) => {
     if (rooms[roomId]) {
       socket.emit('error', 'Room already exists');
       return;
     }
-    // 部屋を初期化（players と deck を含むオブジェクトとして管理）
+    // 部屋の初期化
     rooms[roomId] = {
       players: [],
       deck: []
@@ -34,48 +34,53 @@ io.on('connection', (socket) => {
     console.log(`Room ${roomId} created`);
     io.emit('roomsList', Object.keys(rooms));
 
-    // デッキを初期化してシャッフルする
+    // デッキの初期化とシャッフル
     const allCards = [];
     for (let i = 1; i <= 36; i++) {
-      const numStr = String(i).padStart(5, '0'); // 00001, 00002, ...
+      const numStr = String(i).padStart(5, '0'); // "00001", "00002", ...
       allCards.push(`stone_${numStr}.jpg`);
     }
-    // Fisher–Yates シャッフル
     for (let i = allCards.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [allCards[i], allCards[j]] = [allCards[j], allCards[i]];
     }
     rooms[roomId].deck = allCards;
+
+    // 自動参加：playerName が提供されていれば、そのプレイヤーを登録
+    if (playerName) {
+      rooms[roomId].players.push({ id: socket.id, name: playerName, points: 0 });
+      socket.join(roomId);
+      console.log(`${playerName} joined room ${roomId}`);
+      io.to(roomId).emit('updatePlayers', rooms[roomId].players);
+    }
   });
 
-  // 部屋に参加するイベント
+  // 既存の部屋に参加するイベント
   socket.on('joinRoom', ({ roomId, playerName }) => {
     if (!rooms[roomId]) {
       socket.emit('error', 'Room does not exist');
       return;
     }
-    // 同じプレイヤー名が既に存在しないかチェック
+    // 同じ名前が既に使われていないかチェック
     const duplicate = rooms[roomId].players.find(p => p.name === playerName);
     if (duplicate) {
       socket.emit('error', 'Player name already taken in this room');
       return;
     }
-    // プレイヤーのスコアを初期化して追加
     rooms[roomId].players.push({ id: socket.id, name: playerName, points: 0 });
     socket.join(roomId);
-
     console.log(`${playerName} joined room ${roomId}`);
     io.to(roomId).emit('updatePlayers', rooms[roomId].players);
   });
 
-  // ゲーム開始イベント（部屋作成者が待機画面で「ゲーム開始」を押す場合）
+  // ゲーム開始イベント
   socket.on('startGame', (roomId) => {
     const room = rooms[roomId];
     if (!room || room.players.length === 0) {
       socket.emit('error', 'No players in room');
       return;
     }
-    // ランダムに親プレイヤーを選ぶ
+    // room.players を用いて、ランダムに親プレイヤーを選ぶ
     room.currentTurnPlayerIndex = Math.floor(Math.random() * room.players.length);
     const currentTurnPlayer = room.players[room.currentTurnPlayerIndex];
     io.to(roomId).emit('gameStarted', currentTurnPlayer);
@@ -90,7 +95,6 @@ io.on('connection', (socket) => {
     }
     const currentTurnPlayer = room.players[room.currentTurnPlayerIndex];
     if (socket.id !== currentTurnPlayer.id) return;
-
     const card = room.deck.pop();
     if (!card) {
       socket.emit('error', 'No more cards');
