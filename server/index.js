@@ -9,118 +9,146 @@ const server = http.createServer(app);
 app.use(cors());
 
 const io = new Server(server, {
-    cors: {
-        origin: "*",
-        methods: ["GET", "POST"]
-    }
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
 });
 
-const rooms = {}; // 部屋ごとのプレイヤー情報を管理
-let currentTurnPlayerIndex = 0; // 親プレイヤーのターン管理
-let currentCard = null; // 引いたカード
+const rooms = {}; // 部屋ごとの情報を管理（players と deck を保持）
 
 io.on('connection', (socket) => {
-    console.log(`New client connected: ${socket.id}`);
+  console.log(`New client connected: ${socket.id}`);
 
-    // 部屋を作成
-    socket.on('createRoom', (roomId) => {
-        if (rooms[roomId]) {
-            socket.emit('error', 'Room already exists');
-            return;
-        }
-        rooms[roomId] = [];
-        console.log(`Room ${roomId} created`);
-        io.emit('roomsList', Object.keys(rooms)); // 全クライアントに最新ルーム一覧を送信
-    });
+  // 部屋を作成するイベント
+  socket.on('createRoom', (roomId) => {
+    if (rooms[roomId]) {
+      socket.emit('error', 'Room already exists');
+      return;
+    }
+    // 部屋を初期化（players と deck を含むオブジェクトとして管理）
+    rooms[roomId] = {
+      players: [],
+      deck: []
+    };
+    console.log(`Room ${roomId} created`);
+    io.emit('roomsList', Object.keys(rooms));
 
-    // 部屋に参加
-    socket.on('joinRoom', ({ roomId, playerName }) => {
-        if (!rooms[roomId]) {
-            socket.emit('error', 'Room does not exist');
-            return;
-        }
-        // 同じプレイヤー名が存在しないかチェック
-        const duplicate = rooms[roomId].find(player => player.name === playerName);
-        if (duplicate) {
-            socket.emit('error', 'Player name already taken in this room');
-            return;
-        }
-        // プレイヤーのスコアを初期化して追加
-        rooms[roomId].push({ id: socket.id, name: playerName, points: 0 });
-        socket.join(roomId);
+    // デッキを初期化してシャッフルする
+    const allCards = [];
+    for (let i = 1; i <= 36; i++) {
+      const numStr = String(i).padStart(5, '0'); // 00001, 00002, ...
+      allCards.push(`stone_${numStr}.jpg`);
+    }
+    // Fisher–Yates シャッフル
+    for (let i = allCards.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [allCards[i], allCards[j]] = [allCards[j], allCards[i]];
+    }
+    rooms[roomId].deck = allCards;
+  });
 
-        console.log(`${playerName} joined room ${roomId}`);
-        io.to(roomId).emit('updatePlayers', rooms[roomId]);
-    });
+  // 部屋に参加するイベント
+  socket.on('joinRoom', ({ roomId, playerName }) => {
+    if (!rooms[roomId]) {
+      socket.emit('error', 'Room does not exist');
+      return;
+    }
+    // 同じプレイヤー名が既に存在しないかチェック
+    const duplicate = rooms[roomId].players.find(p => p.name === playerName);
+    if (duplicate) {
+      socket.emit('error', 'Player name already taken in this room');
+      return;
+    }
+    // プレイヤーのスコアを初期化して追加
+    rooms[roomId].players.push({ id: socket.id, name: playerName, points: 0 });
+    socket.join(roomId);
 
-    // ゲーム開始
-    socket.on('startGame', (roomId) => {
-        const roomPlayers = rooms[roomId];
-        if (!roomPlayers || roomPlayers.length === 0) {
-            socket.emit('error', 'No players in room');
-            return;
-        }
-        currentTurnPlayerIndex = Math.floor(Math.random() * roomPlayers.length); // ランダムで親プレイヤーを選ぶ
-        io.to(roomId).emit('gameStarted', roomPlayers[currentTurnPlayerIndex]);
-    });
+    console.log(`${playerName} joined room ${roomId}`);
+    io.to(roomId).emit('updatePlayers', rooms[roomId].players);
+  });
 
-    // カードを引く
-    socket.on('drawCard', (roomId) => {
-        if (!rooms[roomId]) {
-            socket.emit('error', 'Room does not exist');
-            return;
-        }
-        if (socket.id !== rooms[roomId][currentTurnPlayerIndex].id) return; // 親プレイヤーのみ
-        currentCard = "カードの内容"; // ここでカード生成のロジックを拡張可能
-        io.to(roomId).emit('cardDrawn', currentCard);
-    });
+  // ゲーム開始イベント（部屋作成者が待機画面で「ゲーム開始」を押す場合）
+  socket.on('startGame', (roomId) => {
+    const room = rooms[roomId];
+    if (!room || room.players.length === 0) {
+      socket.emit('error', 'No players in room');
+      return;
+    }
+    // ランダムに親プレイヤーを選ぶ
+    room.currentTurnPlayerIndex = Math.floor(Math.random() * room.players.length);
+    const currentTurnPlayer = room.players[room.currentTurnPlayerIndex];
+    io.to(roomId).emit('gameStarted', currentTurnPlayer);
+  });
 
-    socket.on('submitOnomatopoeia', (roomId, onomatopoeia) => {
-        io.to(roomId).emit('chooseOnomatopoeia', onomatopoeia);
-    });
+  // カードを引くイベント（親プレイヤーのみ）
+  socket.on('drawCard', (roomId) => {
+    const room = rooms[roomId];
+    if (!room) {
+      socket.emit('error', 'Room does not exist');
+      return;
+    }
+    const currentTurnPlayer = room.players[room.currentTurnPlayerIndex];
+    if (socket.id !== currentTurnPlayer.id) return;
 
-    socket.on('nextTurn', (roomId) => {
-        const roomPlayers = rooms[roomId];
-        if (!roomPlayers) return;
-        currentTurnPlayerIndex = (currentTurnPlayerIndex + 1) % roomPlayers.length;
-        io.to(roomId).emit('newTurn', roomPlayers[currentTurnPlayerIndex]);
-    });
+    const card = room.deck.pop();
+    if (!card) {
+      socket.emit('error', 'No more cards');
+      return;
+    }
+    io.to(roomId).emit('cardDrawn', card);
+  });
 
-    socket.on('chooseOnomatopoeia', (roomId, chosenOnomatopoeia) => {
-        io.to(roomId).emit('onomatopoeiaChosen', chosenOnomatopoeia);
-    });
+  // オノマトペ提出イベント
+  socket.on('submitOnomatopoeia', (roomId, onomatopoeia) => {
+    io.to(roomId).emit('chooseOnomatopoeia', onomatopoeia);
+  });
 
-    socket.on('endGame', (roomId) => {
-        const roomPlayers = rooms[roomId];
-        if (!roomPlayers || roomPlayers.length === 0) {
-            socket.emit('error', 'Room does not exist or no players');
-            return;
-        }
-        let winner = roomPlayers.reduce((prev, current) => (prev.points > current.points ? prev : current));
-        io.to(roomId).emit('gameOver', winner);
-    });
+  // 次のターンへの移行イベント
+  socket.on('nextTurn', (roomId) => {
+    const room = rooms[roomId];
+    if (!room) return;
+    room.currentTurnPlayerIndex = (room.currentTurnPlayerIndex + 1) % room.players.length;
+    io.to(roomId).emit('newTurn', room.players[room.currentTurnPlayerIndex]);
+  });
 
-    // ルーム一覧取得リクエスト
-    socket.on('getRooms', () => {
-        socket.emit('roomsList', Object.keys(rooms));
-    });
+  // オノマトペ選択イベント
+  socket.on('chooseOnomatopoeia', (roomId, chosenOnomatopoeia) => {
+    io.to(roomId).emit('onomatopoeiaChosen', chosenOnomatopoeia);
+  });
 
-    // 切断時の処理
-    socket.on('disconnect', () => {
-        for (const roomId in rooms) {
-            rooms[roomId] = rooms[roomId].filter(player => player.id !== socket.id);
-            io.to(roomId).emit('updatePlayers', rooms[roomId]);
-            if (rooms[roomId].length === 0) {
-                delete rooms[roomId];
-                console.log(`Room ${roomId} deleted`);
-                io.emit('roomsList', Object.keys(rooms)); // 削除後のルーム一覧更新
-            }
-        }
-        console.log(`Client disconnected: ${socket.id}`);
-    });
+  // ゲーム終了イベント
+  socket.on('endGame', (roomId) => {
+    const room = rooms[roomId];
+    if (!room || room.players.length === 0) {
+      socket.emit('error', 'Room does not exist or no players');
+      return;
+    }
+    const winner = room.players.reduce((prev, current) => (prev.points > current.points ? prev : current));
+    io.to(roomId).emit('gameOver', winner);
+  });
+
+  // ルーム一覧取得リクエスト
+  socket.on('getRooms', () => {
+    socket.emit('roomsList', Object.keys(rooms));
+  });
+
+  // 切断時の処理
+  socket.on('disconnect', () => {
+    for (const roomId in rooms) {
+      rooms[roomId].players = rooms[roomId].players.filter(player => player.id !== socket.id);
+      io.to(roomId).emit('updatePlayers', rooms[roomId].players);
+      if (rooms[roomId].players.length === 0) {
+        delete rooms[roomId];
+        console.log(`Room ${roomId} deleted`);
+        io.emit('roomsList', Object.keys(rooms));
+      }
+    }
+    console.log(`Client disconnected: ${socket.id}`);
+  });
 });
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });

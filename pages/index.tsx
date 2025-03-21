@@ -1,6 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { io } from "socket.io-client";
 
+const generateRoomId = () => {
+  return Math.floor(Math.random() * 10000).toString().padStart(4, "0");
+};
+
 export default function Home() {
   const socketRef = useRef(null);
   const [roomId, setRoomId] = useState("");
@@ -9,9 +13,16 @@ export default function Home() {
   const [currentCard, setCurrentCard] = useState(null);
   const [onomatopoeia, setOnomatopoeia] = useState("");
   const [winner, setWinner] = useState(null);
-  const [gameState, setGameState] = useState("title"); // "title", "createRoom", "joinRoom", "game", "gameOver"
+  const [gameState, setGameState] = useState("title"); // "title", "createRoom", "joinRoom", "waiting", "game", "gameOver"
   const [availableRooms, setAvailableRooms] = useState([]);
   const [errorMessage, setErrorMessage] = useState("");
+
+  // 自動生成の処理：createRoom画面に入ったら部屋IDを生成
+  useEffect(() => {
+    if (gameState === "createRoom") {
+      setRoomId(generateRoomId());
+    }
+  }, [gameState]);
 
   useEffect(() => {
     if (!socketRef.current) {
@@ -58,16 +69,18 @@ export default function Home() {
     };
   }, []);
 
-  const createRoom = () => {
-    if (!roomId) return;
+  // 部屋作成と自動参加を同時に行う関数
+  const createAndJoinRoom = () => {
+    if (!roomId || !playerName) return;
     socketRef.current.emit("createRoom", roomId);
-    setGameState("join"); // ルーム作成後、参加画面に移動
+    socketRef.current.emit("joinRoom", { roomId, playerName });
+    setGameState("waiting");
   };
 
   const joinRoom = () => {
     if (!roomId || !playerName) return;
     socketRef.current.emit("joinRoom", { roomId, playerName });
-    setGameState("game"); // 参加後、ゲーム画面に移動
+    setGameState("waiting");
   };
 
   const startGame = () => {
@@ -100,13 +113,14 @@ export default function Home() {
     <div>
       <h2>部屋を作成</h2>
       {errorMessage && <p style={{ color: "red" }}>{errorMessage}</p>}
+      <p>自動生成された部屋ID: {roomId}</p>
       <input
         type="text"
-        placeholder="部屋IDを入力"
-        value={roomId}
-        onChange={(e) => setRoomId(e.target.value)}
+        placeholder="プレイヤー名を入力"
+        value={playerName}
+        onChange={(e) => setPlayerName(e.target.value)}
       />
-      <button onClick={createRoom}>部屋を作る</button>
+      <button onClick={createAndJoinRoom}>部屋を作成＆自動参加</button>
       <button onClick={() => setGameState("title")}>戻る</button>
     </div>
   );
@@ -151,18 +165,34 @@ export default function Home() {
     </div>
   );
 
+  const renderWaitingScreen = () => (
+    <div>
+      <h2>待機画面</h2>
+      <p>部屋ID: {roomId}</p>
+      <p>参加者:</p>
+      <ul>
+        {players.map((player, index) => (
+          <li key={index}>
+            {player.name} {player.isCPU ? "(Bot)" : ""}
+          </li>
+        ))}
+      </ul>
+      <button onClick={startGame}>ゲーム開始</button>
+    </div>
+  );
+
   const renderGameScreen = () => (
     <div>
       <h2>ゲーム画面</h2>
       <button onClick={startGame}>ゲーム開始</button>
       <button onClick={drawCard}>カードを引く</button>
-      <h3>現在のカード: {currentCard}</h3>
-
-      {gameState === "chooseOnomatopoeia" && (
-        <div>
-          <h4>親プレイヤーがオノマトペを選んでください</h4>
-          <button onClick={submitOnomatopoeia}>オノマトペを送信</button>
-        </div>
+      <h3>現在のカード:</h3>
+      {currentCard && (
+        <img
+          src={`/images/${currentCard}`}
+          alt="現在のカード"
+          style={{ width: "300px", height: "auto" }}
+        />
       )}
       <input
         type="text"
@@ -191,6 +221,7 @@ export default function Home() {
       {gameState === "title" && renderTitleScreen()}
       {gameState === "createRoom" && renderCreateRoomScreen()}
       {gameState === "joinRoom" && renderJoinRoomScreen()}
+      {gameState === "waiting" && renderWaitingScreen()}
       {(gameState === "game" || gameState === "gameOver") && renderGameScreen()}
     </div>
   );
