@@ -1,3 +1,4 @@
+// pages/index.tsx
 import { useState, useEffect, useRef } from "react";
 import { io } from "socket.io-client";
 import TitleScreen from "../components/TitleScreen";
@@ -122,6 +123,13 @@ export default function Home() {
     }
   };
 
+  // ターンタイマーで時間切れになったら次のターンへ移行する処理
+  const handleTurnTimeout = () => {
+    if (socketRef.current) {
+      socketRef.current.emit("nextTurn", roomId);
+    }
+  };
+
   return (
     <div className="container">
       {gameState === "title" && (
@@ -176,6 +184,7 @@ export default function Home() {
           onSendOnomatopoeia={submitOnomatopoeia}
           onOnomatopoeiaChange={(e) => setOnomatopoeia(e.target.value)}
           onomatopoeia={onomatopoeia}
+          onTurnTimeout={handleTurnTimeout}
         />
       )}
     </div>
