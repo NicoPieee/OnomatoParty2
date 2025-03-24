@@ -11,7 +11,6 @@ const generateRoomId = () => {
 };
 
 export default function Home() {
-  // ここは今まで通りの状態管理
   const socketRef = useRef(null);
   const [myId, setMyId] = useState(null);
   const [roomId, setRoomId] = useState("");
@@ -25,50 +24,112 @@ export default function Home() {
   const [availableRooms, setAvailableRooms] = useState([]);
   const [errorMessage, setErrorMessage] = useState("");
   const [hasDrawnCard, setHasDrawnCard] = useState(false);
+  const [socketConnected, setSocketConnected] = useState(false);
 
-  // ... socket 初期化や useEffect の処理はこれまで通り
+  // ソケット初期化と各種イベントハンドラの登録
+  useEffect(() => {
+    socketRef.current = io("http://localhost:5000");
 
-  // 各イベントハンドラはそのまま
+    socketRef.current.on("connect", () => {
+      setMyId(socketRef.current.id);
+      setSocketConnected(true);
+    });
+
+    socketRef.current.on("updatePlayers", setPlayers);
+
+    socketRef.current.on("gameStarted", (player) => {
+      setParentPlayer(player);
+      setGameState("game");
+    });
+
+    socketRef.current.on("cardDrawn", (card) => {
+      setCurrentCard(card);
+    });
+
+    socketRef.current.on("roomsList", setAvailableRooms);
+
+    socketRef.current.on("error", (msg) => {
+      setErrorMessage(msg);
+      setTimeout(() => setErrorMessage(""), 3000);
+    });
+
+    socketRef.current.on("newTurn", (nextParentPlayer) => {
+      setParentPlayer(nextParentPlayer);
+      setCurrentCard(null);
+      setOnomatopoeia("");
+      setHasDrawnCard(false);
+    });
+
+    socketRef.current.on("onomatopoeiaChosen", (data) => {
+      setPlayers(data.updatedPlayers);
+    });
+
+    socketRef.current.on("gameOver", (winnerData) => {
+      setWinner(winnerData);
+      setGameState("gameOver");
+    });
+
+    socketRef.current.emit("getRooms");
+
+    return () => {
+      socketRef.current.disconnect();
+    };
+  }, []);
+
   const createAndJoinRoom = () => {
     if (!roomId || !playerName) return;
+    if (!socketRef.current) {
+      console.error("Socket is not initialized yet");
+      return;
+    }
     socketRef.current.emit("createRoom", { roomId, playerName });
     setGameState("waiting");
   };
 
   const joinRoom = () => {
     if (!roomId || !playerName) return;
+    if (!socketRef.current) {
+      console.error("Socket is not initialized yet");
+      return;
+    }
     socketRef.current.emit("joinRoom", { roomId, playerName });
     setGameState("waiting");
   };
 
   const startGame = () => {
-    socketRef.current.emit("startGame", roomId);
+    if (socketRef.current) {
+      socketRef.current.emit("startGame", roomId);
+    }
   };
 
   const drawCard = () => {
-    if (!hasDrawnCard) {
+    if (!hasDrawnCard && socketRef.current) {
       socketRef.current.emit("drawCard", roomId);
       setHasDrawnCard(true);
     }
   };
 
   const submitOnomatopoeia = () => {
-    if (onomatopoeia) {
+    if (onomatopoeia && socketRef.current) {
       socketRef.current.emit("submitOnomatopoeia", roomId, onomatopoeia);
       setOnomatopoeia("");
     }
   };
 
   const refreshRooms = () => {
-    socketRef.current.emit("getRooms");
+    if (socketRef.current) {
+      socketRef.current.emit("getRooms");
+    }
   };
 
-  // 各コンポーネントに必要なイベントハンドラや状態を渡す
   return (
     <div className="container">
       {gameState === "title" && (
         <TitleScreen 
-          onCreateRoom={() => setGameState("createRoom")}
+          onCreateRoom={() => {
+            setRoomId(generateRoomId());
+            setGameState("createRoom");
+          }}
           onJoinRoom={() => setGameState("joinRoom")}
         />
       )}
@@ -106,16 +167,16 @@ export default function Home() {
       )}
       {(gameState === "game" || gameState === "gameOver") && (
         <GameScreen 
-        players={players}
-        parentPlayer={parentPlayer}
-        myId={myId}
-        currentCard={currentCard}
-        onDrawCard={drawCard}
-        hasDrawnCard={hasDrawnCard}
-        onSendOnomatopoeia={submitOnomatopoeia}  // 修正：ここを onSendOnomatopoeia に変更
-        onOnomatopoeiaChange={(e) => setOnomatopoeia(e.target.value)}
-        onomatopoeia={onomatopoeia}
-      />
+          players={players}
+          parentPlayer={parentPlayer}
+          myId={myId}
+          currentCard={currentCard}
+          onDrawCard={drawCard}
+          hasDrawnCard={hasDrawnCard}
+          onSendOnomatopoeia={submitOnomatopoeia}
+          onOnomatopoeiaChange={(e) => setOnomatopoeia(e.target.value)}
+          onomatopoeia={onomatopoeia}
+        />
       )}
     </div>
   );
