@@ -183,7 +183,7 @@ export default function Home() {
           </li>
         ))}
       </ul>
-      {currentCard && <img src={`/images/${currentCard}`} alt="カード" />}
+      {currentCard && <img src={`/images/${currentCard}`} alt="カード" className="card-img" />}
       {parentPlayer && myId === parentPlayer.id ? (
         <button onClick={drawCard}>カードを引く</button>
       ) : (
