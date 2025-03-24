@@ -103,9 +103,38 @@ io.on('connection', (socket) => {
     io.to(roomId).emit('cardDrawn', card);
   });
 
-  // オノマトペ提出イベント
+  // オノマトペ提出イベント（子プレイヤー用）
   socket.on('submitOnomatopoeia', (roomId, onomatopoeia) => {
-    io.to(roomId).emit('chooseOnomatopoeia', onomatopoeia);
+    const room = rooms[roomId];
+    if (!room) {
+      socket.emit('error', 'Room does not exist');
+      return;
+    }
+    const sender = room.players.find(player => player.id === socket.id);
+    if (!sender) {
+      socket.emit('error', 'Sender not found');
+      return;
+    }
+    console.log(`Player ${sender.name} submitted onomatopoeia: ${onomatopoeia}`);
+    // 送信者情報と共に、親プレイヤーにブロードキャスト
+    io.to(roomId).emit('chooseOnomatopoeia', { onomatopoeia, playerId: socket.id, playerName: sender.name });
+  });
+
+  // 親プレイヤーによるオノマトペ選択イベント
+  socket.on('chooseOnomatopoeia', (roomId, chosenData) => {
+    const room = rooms[roomId];
+    if (!room) return;
+  
+    // 得点加算
+    const winnerPlayer = room.players.find(p => p.id === chosenData.playerId);
+    if (winnerPlayer) winnerPlayer.points += 1;
+  
+    // 得点状況と選ばれたオノマトペを全員に通知
+    io.to(roomId).emit('onomatopoeiaChosen', { 
+      chosenPlayer: winnerPlayer,
+      updatedPlayers: room.players,
+      onomatopoeia: chosenData.onomatopoeia 
+    });
   });
 
   // 次のターンへの移行イベント
@@ -114,11 +143,6 @@ io.on('connection', (socket) => {
     if (!room) return;
     room.currentTurnPlayerIndex = (room.currentTurnPlayerIndex + 1) % room.players.length;
     io.to(roomId).emit('newTurn', room.players[room.currentTurnPlayerIndex]);
-  });
-
-  // オノマトペ選択イベント
-  socket.on('chooseOnomatopoeia', (roomId, chosenOnomatopoeia) => {
-    io.to(roomId).emit('onomatopoeiaChosen', chosenOnomatopoeia);
   });
 
   // ゲーム終了イベント
