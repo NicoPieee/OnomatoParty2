@@ -29,27 +29,32 @@ export default function Home() {
 
   useEffect(() => {
     socketRef.current = io("http://localhost:5000");
-
+  
     socketRef.current.on("connect", () => {
       setMyId(socketRef.current.id);
     });
-
+  
+    socketRef.current.on("onomatopoeiaList", (list) => {
+      console.log('クライアントが受け取ったオノマトペリスト:', list);  // このログを必ず残してね！
+      setOnomatopoeiaList(list);
+    });
+  
     socketRef.current.on("updatePlayers", setPlayers);
-
+  
     socketRef.current.on("gameStarted", (player) => {
       setParentPlayer(player);
       setGameState("game");
     });
-
+  
     socketRef.current.on("cardDrawn", setCurrentCard);
-
+  
     socketRef.current.on("roomsList", setAvailableRooms);
-
+  
     socketRef.current.on("error", (msg) => {
       setErrorMessage(msg);
       setTimeout(() => setErrorMessage(""), 3000);
     });
-
+  
     socketRef.current.on("newTurn", (nextParentPlayer) => {
       setParentPlayer(nextParentPlayer);
       setCurrentCard(null);
@@ -57,27 +62,24 @@ export default function Home() {
       setHasDrawnCard(false);
       setOnomatopoeiaList([]);
     });
-
+  
     socketRef.current.on("onomatopoeiaChosen", (data) => {
       setPlayers(data.updatedPlayers);
     });
-
+  
     socketRef.current.on("gameOver", (winnerData) => {
       setWinner(winnerData);
       setGameState("gameOver");
     });
-
-    // 親プレイヤーへオノマトペ一覧を送信
-    socketRef.current.on("onomatopoeiaList", (list) => {
-      setOnomatopoeiaList(list);
-    });
-
+  
     socketRef.current.emit("getRooms");
-
+  
     return () => {
       socketRef.current.disconnect();
     };
   }, []);
+  
+  
 
   const createAndJoinRoom = () => {
     if (!roomId || !playerName) return;

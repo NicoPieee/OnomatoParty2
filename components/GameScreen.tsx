@@ -35,8 +35,12 @@ export default function GameScreen({
   const displayedCard = currentCard || "fallback.jpg";
 
   useEffect(() => {
-    setTimeLeft(15);
+    setTimeLeft(60);
   }, [parentPlayer]);
+
+  useEffect(() => {
+    console.log('GameScreenでのオノマトペリスト:', onomatopoeiaList);
+  }, [onomatopoeiaList]);
 
   useEffect(() => {
     const timer = setInterval(() => {

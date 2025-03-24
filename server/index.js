@@ -81,15 +81,35 @@ io.on('connection', (socket) => {
 
   socket.on('submitOnomatopoeia', (roomId, onomatopoeia) => {
     const room = rooms[roomId];
-    if (!room) return;
-
+    if (!room) {
+      console.log(`Room(${roomId})が見つかりません。`);
+      return;
+    }
+  
     room.onomatopoeiaList.push({ playerId: socket.id, onomatopoeia });
-
-    if (room.onomatopoeiaList.length === room.players.length - 1) {
+    console.log(`オノマトペリスト(${roomId}):`, room.onomatopoeiaList);
+  
+    // プレイヤー数とオノマトペ数を確認
+    const expectedCount = room.players.length - 1;
+    const currentCount = room.onomatopoeiaList.length;
+    console.log(`必要なオノマトペ数: ${expectedCount}, 現在: ${currentCount}`);
+  
+    if (currentCount === expectedCount) {
       const parentPlayer = room.players[room.currentTurnPlayerIndex];
-      io.to(parentPlayer.id).emit('onomatopoeiaList', room.onomatopoeiaList);
+      console.log(`親プレイヤーに送信(${parentPlayer.name}, ${parentPlayer.id})`);
+  
+      const connectedSockets = Array.from(io.sockets.sockets.keys());
+      console.log(`現在の接続中のソケット一覧:`, connectedSockets);
+  
+      if (connectedSockets.includes(parentPlayer.id)) {
+        io.to(parentPlayer.id).emit('onomatopoeiaList', room.onomatopoeiaList);
+        console.log('イベント送信成功');
+      } else {
+        console.log(`エラー：親プレイヤーのsocketID(${parentPlayer.id})は現在接続中ではありません。`);
+      }
     }
   });
+  
 
   socket.on('chooseOnomatopoeia', (roomId, selectedPlayerId) => {
     const room = rooms[roomId];
