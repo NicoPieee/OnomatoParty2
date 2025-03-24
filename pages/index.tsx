@@ -25,15 +25,13 @@ export default function Home() {
   const [availableRooms, setAvailableRooms] = useState([]);
   const [errorMessage, setErrorMessage] = useState("");
   const [hasDrawnCard, setHasDrawnCard] = useState(false);
-  const [socketConnected, setSocketConnected] = useState(false);
+  const [onomatopoeiaList, setOnomatopoeiaList] = useState([]);
 
-  // ソケット初期化と各種イベントハンドラの登録
   useEffect(() => {
     socketRef.current = io("http://localhost:5000");
 
     socketRef.current.on("connect", () => {
       setMyId(socketRef.current.id);
-      setSocketConnected(true);
     });
 
     socketRef.current.on("updatePlayers", setPlayers);
@@ -43,9 +41,7 @@ export default function Home() {
       setGameState("game");
     });
 
-    socketRef.current.on("cardDrawn", (card) => {
-      setCurrentCard(card);
-    });
+    socketRef.current.on("cardDrawn", setCurrentCard);
 
     socketRef.current.on("roomsList", setAvailableRooms);
 
@@ -59,6 +55,7 @@ export default function Home() {
       setCurrentCard(null);
       setOnomatopoeia("");
       setHasDrawnCard(false);
+      setOnomatopoeiaList([]);
     });
 
     socketRef.current.on("onomatopoeiaChosen", (data) => {
@@ -70,6 +67,11 @@ export default function Home() {
       setGameState("gameOver");
     });
 
+    // 親プレイヤーへオノマトペ一覧を送信
+    socketRef.current.on("onomatopoeiaList", (list) => {
+      setOnomatopoeiaList(list);
+    });
+
     socketRef.current.emit("getRooms");
 
     return () => {
@@ -79,55 +81,45 @@ export default function Home() {
 
   const createAndJoinRoom = () => {
     if (!roomId || !playerName) return;
-    if (!socketRef.current) {
-      console.error("Socket is not initialized yet");
-      return;
-    }
     socketRef.current.emit("createRoom", { roomId, playerName });
     setGameState("waiting");
   };
 
   const joinRoom = () => {
     if (!roomId || !playerName) return;
-    if (!socketRef.current) {
-      console.error("Socket is not initialized yet");
-      return;
-    }
     socketRef.current.emit("joinRoom", { roomId, playerName });
     setGameState("waiting");
   };
 
   const startGame = () => {
-    if (socketRef.current) {
-      socketRef.current.emit("startGame", roomId);
-    }
+    socketRef.current.emit("startGame", roomId);
   };
 
   const drawCard = () => {
-    if (!hasDrawnCard && socketRef.current) {
+    if (!hasDrawnCard) {
       socketRef.current.emit("drawCard", roomId);
       setHasDrawnCard(true);
     }
   };
 
   const submitOnomatopoeia = () => {
-    if (onomatopoeia && socketRef.current) {
+    if (onomatopoeia) {
       socketRef.current.emit("submitOnomatopoeia", roomId, onomatopoeia);
       setOnomatopoeia("");
     }
   };
 
-  const refreshRooms = () => {
-    if (socketRef.current) {
-      socketRef.current.emit("getRooms");
-    }
+  const chooseOnomatopoeia = (selectedPlayerId) => {
+    socketRef.current.emit("chooseOnomatopoeia", roomId, selectedPlayerId);
+    setOnomatopoeiaList([]);
   };
 
-  // ターンタイマーで時間切れになったら次のターンへ移行する処理
+  const refreshRooms = () => {
+    socketRef.current.emit("getRooms");
+  };
+
   const handleTurnTimeout = () => {
-    if (socketRef.current) {
-      socketRef.current.emit("nextTurn", roomId);
-    }
+    socketRef.current.emit("nextTurn", roomId);
   };
 
   return (
@@ -174,7 +166,7 @@ export default function Home() {
         />
       )}
       {(gameState === "game" || gameState === "gameOver") && (
-        <GameScreen 
+        <GameScreen
           players={players}
           parentPlayer={parentPlayer}
           myId={myId}
@@ -185,6 +177,9 @@ export default function Home() {
           onOnomatopoeiaChange={(e) => setOnomatopoeia(e.target.value)}
           onomatopoeia={onomatopoeia}
           onTurnTimeout={handleTurnTimeout}
+          socketRef={socketRef}
+          onomatopoeiaList={onomatopoeiaList}
+          onChooseOnomatopoeia={chooseOnomatopoeia}
         />
       )}
     </div>

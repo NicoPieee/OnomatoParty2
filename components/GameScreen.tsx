@@ -7,14 +7,15 @@ interface GameScreenProps {
   myId: string;
   currentCard: string | null;
   onDrawCard: () => void;
+  hasDrawnCard: boolean;
   onSendOnomatopoeia: () => void;
   onOnomatopoeiaChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  hasDrawnCard: boolean;
   onomatopoeia: string;
   onTurnTimeout: () => void;
+  socketRef: any;
+  onomatopoeiaList: { playerId: string; onomatopoeia: string }[];
+  onChooseOnomatopoeia: (playerId: string) => void;
 }
-
-const TURN_DURATION = 15; // 制限時間（秒）
 
 export default function GameScreen({
   players,
@@ -22,21 +23,21 @@ export default function GameScreen({
   myId,
   currentCard,
   onDrawCard,
+  hasDrawnCard,
   onSendOnomatopoeia,
   onOnomatopoeiaChange,
-  hasDrawnCard,
   onomatopoeia,
   onTurnTimeout,
+  onomatopoeiaList,
+  onChooseOnomatopoeia,
 }: GameScreenProps) {
+  const [timeLeft, setTimeLeft] = useState(15);
   const displayedCard = currentCard || "fallback.jpg";
-  const [timeLeft, setTimeLeft] = useState(TURN_DURATION);
 
-  // ターン開始時にタイマーをリセット
   useEffect(() => {
-    setTimeLeft(TURN_DURATION);
+    setTimeLeft(15);
   }, [parentPlayer]);
 
-  // タイマーのカウントダウン
   useEffect(() => {
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
@@ -48,13 +49,11 @@ export default function GameScreen({
         return prev - 1;
       });
     }, 1000);
-
     return () => clearInterval(timer);
-  }, [onTurnTimeout]);
+  }, [onTurnTimeout, parentPlayer]);
 
   return (
     <div className="game-screen">
-      {/* サイドバー：プレイヤーリスト */}
       <div className="sidebar">
         <h3>プレイヤー一覧</h3>
         <ul>
@@ -66,19 +65,34 @@ export default function GameScreen({
           ))}
         </ul>
       </div>
-      {/* メインエリア：カードとアクション */}
+
       <div className="main">
-        <img
-          src={`/images/${displayedCard}`}
-          alt="カード"
-          className="card-img"
-        />
+        <img src={`/images/${displayedCard}`} alt="カード" className="card-img" />
+
         {parentPlayer && myId === parentPlayer.id ? (
           <>
-            <button onClick={onDrawCard} disabled={hasDrawnCard}>
-              カードを引く
-            </button>
-            <div>残り時間: {timeLeft}秒</div>
+            {!onomatopoeiaList.length && (
+              <>
+                <button onClick={onDrawCard} disabled={hasDrawnCard}>
+                  カードを引く
+                </button>
+                <div>残り時間: {timeLeft}秒</div>
+              </>
+            )}
+
+            {onomatopoeiaList.length > 0 && (
+              <div className="onomatopoeia-list">
+                <h4>オノマトペを選んで！</h4>
+                {onomatopoeiaList.map((item, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => onChooseOnomatopoeia(item.playerId)}
+                  >
+                    {item.onomatopoeia}
+                  </button>
+                ))}
+              </div>
+            )}
           </>
         ) : (
           <>

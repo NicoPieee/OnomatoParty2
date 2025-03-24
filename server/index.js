@@ -5,7 +5,6 @@ const { Server } = require('socket.io');
 
 const app = express();
 const server = http.createServer(app);
-
 app.use(cors());
 
 const io = new Server(server, {
@@ -15,163 +14,125 @@ const io = new Server(server, {
   }
 });
 
-const rooms = {}; // 各部屋の情報を管理（players と deck を保持）
+const rooms = {};
 
 io.on('connection', (socket) => {
   console.log(`New client connected: ${socket.id}`);
 
-  // 部屋作成イベント：部屋作成時に、部屋ID とプレイヤー名が渡されれば自動参加処理を行う
   socket.on('createRoom', ({ roomId, playerName }) => {
     if (rooms[roomId]) {
       socket.emit('error', 'Room already exists');
       return;
     }
-    // 部屋の初期化
-    rooms[roomId] = {
-      players: [],
-      deck: []
-    };
-    console.log(`Room ${roomId} created`);
-    io.emit('roomsList', Object.keys(rooms));
 
-    // デッキの初期化とシャッフル
-    const allCards = [];
-    for (let i = 1; i <= 36; i++) {
-      const numStr = String(i).padStart(5, '0'); // "00001", "00002", ...
-      allCards.push(`stone_${numStr}.jpg`);
-    }
+    const allCards = Array.from({ length: 36 }, (_, i) => `stone_${String(i + 1).padStart(5, '0')}.jpg`);
     for (let i = allCards.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [allCards[i], allCards[j]] = [allCards[j], allCards[i]];
     }
-    rooms[roomId].deck = allCards;
 
-    // 自動参加：playerName が提供されていれば、そのプレイヤーを登録
-    if (playerName) {
-      rooms[roomId].players.push({ id: socket.id, name: playerName, points: 0 });
-      socket.join(roomId);
-      console.log(`${playerName} joined room ${roomId}`);
-      io.to(roomId).emit('updatePlayers', rooms[roomId].players);
-    }
+    rooms[roomId] = {
+      players: [{ id: socket.id, name: playerName, points: 0 }],
+      deck: allCards,
+      currentTurnPlayerIndex: 0,
+      onomatopoeiaList: []
+    };
+
+    socket.join(roomId);
+    io.emit('roomsList', Object.keys(rooms));
+    io.to(roomId).emit('updatePlayers', rooms[roomId].players);
   });
 
-  // 既存の部屋に参加するイベント
   socket.on('joinRoom', ({ roomId, playerName }) => {
     if (!rooms[roomId]) {
       socket.emit('error', 'Room does not exist');
       return;
     }
-    // 同じ名前が既に使われていないかチェック
-    const duplicate = rooms[roomId].players.find(p => p.name === playerName);
-    if (duplicate) {
-      socket.emit('error', 'Player name already taken in this room');
+    if (rooms[roomId].players.some(p => p.name === playerName)) {
+      socket.emit('error', 'Name already taken in this room');
       return;
     }
     rooms[roomId].players.push({ id: socket.id, name: playerName, points: 0 });
     socket.join(roomId);
-    console.log(`${playerName} joined room ${roomId}`);
     io.to(roomId).emit('updatePlayers', rooms[roomId].players);
   });
 
-  // ゲーム開始イベント
   socket.on('startGame', (roomId) => {
     const room = rooms[roomId];
-    if (!room || room.players.length === 0) {
-      socket.emit('error', 'No players in room');
-      return;
-    }
-    // room.players を用いて、ランダムに親プレイヤーを選ぶ
+    if (!room) return;
     room.currentTurnPlayerIndex = Math.floor(Math.random() * room.players.length);
-    const currentTurnPlayer = room.players[room.currentTurnPlayerIndex];
-    io.to(roomId).emit('gameStarted', currentTurnPlayer);
+    io.to(roomId).emit('gameStarted', room.players[room.currentTurnPlayerIndex]);
   });
 
-  // カードを引くイベント（親プレイヤーのみ）
   socket.on('drawCard', (roomId) => {
     const room = rooms[roomId];
-    if (!room) {
-      socket.emit('error', 'Room does not exist');
-      return;
-    }
-    const currentTurnPlayer = room.players[room.currentTurnPlayerIndex];
-    if (socket.id !== currentTurnPlayer.id) return;
+    if (!room) return;
+
+    const currentPlayer = room.players[room.currentTurnPlayerIndex];
+    if (socket.id !== currentPlayer.id) return;
+
     const card = room.deck.pop();
     if (!card) {
-      socket.emit('error', 'No more cards');
+      io.to(roomId).emit('gameOver', room.players.reduce((a, b) => (a.points > b.points ? a : b)));
       return;
     }
     io.to(roomId).emit('cardDrawn', card);
   });
 
-  // オノマトペ提出イベント（子プレイヤー用）
   socket.on('submitOnomatopoeia', (roomId, onomatopoeia) => {
     const room = rooms[roomId];
-    if (!room) {
-      socket.emit('error', 'Room does not exist');
-      return;
+    if (!room) return;
+
+    room.onomatopoeiaList.push({ playerId: socket.id, onomatopoeia });
+
+    if (room.onomatopoeiaList.length === room.players.length - 1) {
+      const parentPlayer = room.players[room.currentTurnPlayerIndex];
+      io.to(parentPlayer.id).emit('onomatopoeiaList', room.onomatopoeiaList);
     }
-    const sender = room.players.find(player => player.id === socket.id);
-    if (!sender) {
-      socket.emit('error', 'Sender not found');
-      return;
-    }
-    console.log(`Player ${sender.name} submitted onomatopoeia: ${onomatopoeia}`);
-    // 送信者情報と共に、親プレイヤーにブロードキャスト
-    io.to(roomId).emit('chooseOnomatopoeia', { onomatopoeia, playerId: socket.id, playerName: sender.name });
   });
 
-  // 親プレイヤーによるオノマトペ選択イベント
-  socket.on('chooseOnomatopoeia', (roomId, chosenData) => {
+  socket.on('chooseOnomatopoeia', (roomId, selectedPlayerId) => {
     const room = rooms[roomId];
     if (!room) return;
-  
-    // 得点加算
-    const winnerPlayer = room.players.find(p => p.id === chosenData.playerId);
-    if (winnerPlayer) winnerPlayer.points += 1;
-  
-    // 得点状況と選ばれたオノマトペを全員に通知
-    io.to(roomId).emit('onomatopoeiaChosen', { 
-      chosenPlayer: winnerPlayer,
-      updatedPlayers: room.players,
-      onomatopoeia: chosenData.onomatopoeia 
+
+    const chosenPlayer = room.players.find(p => p.id === selectedPlayerId);
+    if (chosenPlayer) chosenPlayer.points += 1;
+
+    io.to(roomId).emit('onomatopoeiaChosen', {
+      chosenPlayer,
+      updatedPlayers: room.players
     });
-  });
 
-  // 次のターンへの移行イベント
-  socket.on('nextTurn', (roomId) => {
-    const room = rooms[roomId];
-    if (!room) return;
+    room.onomatopoeiaList = [];
+
     room.currentTurnPlayerIndex = (room.currentTurnPlayerIndex + 1) % room.players.length;
     io.to(roomId).emit('newTurn', room.players[room.currentTurnPlayerIndex]);
   });
 
-  // ゲーム終了イベント
-  socket.on('endGame', (roomId) => {
+  socket.on('nextTurn', (roomId) => {
     const room = rooms[roomId];
-    if (!room || room.players.length === 0) {
-      socket.emit('error', 'Room does not exist or no players');
-      return;
-    }
-    const winner = room.players.reduce((prev, current) => (prev.points > current.points ? prev : current));
-    io.to(roomId).emit('gameOver', winner);
+    if (!room) return;
+
+    room.onomatopoeiaList = [];
+
+    room.currentTurnPlayerIndex = (room.currentTurnPlayerIndex + 1) % room.players.length;
+    io.to(roomId).emit('newTurn', room.players[room.currentTurnPlayerIndex]);
   });
 
-  // ルーム一覧取得リクエスト
   socket.on('getRooms', () => {
     socket.emit('roomsList', Object.keys(rooms));
   });
 
-  // 切断時の処理
   socket.on('disconnect', () => {
-    for (const roomId in rooms) {
+    Object.keys(rooms).forEach(roomId => {
       rooms[roomId].players = rooms[roomId].players.filter(player => player.id !== socket.id);
-      io.to(roomId).emit('updatePlayers', rooms[roomId].players);
       if (rooms[roomId].players.length === 0) {
         delete rooms[roomId];
-        console.log(`Room ${roomId} deleted`);
         io.emit('roomsList', Object.keys(rooms));
+      } else {
+        io.to(roomId).emit('updatePlayers', rooms[roomId].players);
       }
-    }
+    });
     console.log(`Client disconnected: ${socket.id}`);
   });
 });
