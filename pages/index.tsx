@@ -28,7 +28,7 @@ export default function Home() {
   const [onomatopoeiaList, setOnomatopoeiaList] = useState([]);
 
   useEffect(() => {
-    socketRef.current = io("http://localhost:5000");
+    socketRef.current = io(process.env.NEXT_PUBLIC_SOCKET_SERVER || "http://localhost:5001");
   
     socketRef.current.on("connect", () => {
       setMyId(socketRef.current.id);

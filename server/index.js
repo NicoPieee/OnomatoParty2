@@ -4,12 +4,18 @@ const http = require('http');
 const { Server } = require('socket.io');
 
 const app = express();
+
+// ★ ここで origin を明示的に設定（必要に応じて複数許可も可能）
+app.use(cors({
+  origin: "http://192.168.3.9:3000", // ← フロントのURLに合わせる！
+  methods: ["GET", "POST"]
+}));
+
 const server = http.createServer(app);
-app.use(cors());
 
 const io = new Server(server, {
   cors: {
-    origin: "*",
+    origin: "http://192.168.3.9:3000", // ★ ここも必ず合わせること！
     methods: ["GET", "POST"]
   }
 });
@@ -85,31 +91,20 @@ io.on('connection', (socket) => {
       console.log(`Room(${roomId})が見つかりません。`);
       return;
     }
-  
+
     room.onomatopoeiaList.push({ playerId: socket.id, onomatopoeia });
     console.log(`オノマトペリスト(${roomId}):`, room.onomatopoeiaList);
-  
-    // プレイヤー数とオノマトペ数を確認
+
     const expectedCount = room.players.length - 1;
     const currentCount = room.onomatopoeiaList.length;
-    console.log(`必要なオノマトペ数: ${expectedCount}, 現在: ${currentCount}`);
-  
+
     if (currentCount === expectedCount) {
       const parentPlayer = room.players[room.currentTurnPlayerIndex];
-      console.log(`親プレイヤーに送信(${parentPlayer.name}, ${parentPlayer.id})`);
-  
-      const connectedSockets = Array.from(io.sockets.sockets.keys());
-      console.log(`現在の接続中のソケット一覧:`, connectedSockets);
-  
-      if (connectedSockets.includes(parentPlayer.id)) {
+      if (io.sockets.sockets.has(parentPlayer.id)) {
         io.to(parentPlayer.id).emit('onomatopoeiaList', room.onomatopoeiaList);
-        console.log('イベント送信成功');
-      } else {
-        console.log(`エラー：親プレイヤーのsocketID(${parentPlayer.id})は現在接続中ではありません。`);
       }
     }
   });
-  
 
   socket.on('chooseOnomatopoeia', (roomId, selectedPlayerId) => {
     const room = rooms[roomId];
@@ -124,7 +119,6 @@ io.on('connection', (socket) => {
     });
 
     room.onomatopoeiaList = [];
-
     room.currentTurnPlayerIndex = (room.currentTurnPlayerIndex + 1) % room.players.length;
     io.to(roomId).emit('newTurn', room.players[room.currentTurnPlayerIndex]);
   });
@@ -134,7 +128,6 @@ io.on('connection', (socket) => {
     if (!room) return;
 
     room.onomatopoeiaList = [];
-
     room.currentTurnPlayerIndex = (room.currentTurnPlayerIndex + 1) % room.players.length;
     io.to(roomId).emit('newTurn', room.players[room.currentTurnPlayerIndex]);
   });
@@ -157,7 +150,7 @@ io.on('connection', (socket) => {
   });
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
