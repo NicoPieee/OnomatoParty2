@@ -1,5 +1,5 @@
-// components/GameScreen.tsx
-import React, { useState, useEffect } from "react";
+// components/GameScreen.tsx（完全版・修正版）
+import React, { useState, useEffect } from "react"; // ★useStateとuseEffectをインポート★
 
 interface GameScreenProps {
   players: any[];
@@ -15,6 +15,7 @@ interface GameScreenProps {
   socketRef: any;
   onomatopoeiaList: { playerId: string; onomatopoeia: string }[];
   onChooseOnomatopoeia: (playerId: string) => void;
+  deckName: string;
 }
 
 export default function GameScreen({
@@ -30,17 +31,14 @@ export default function GameScreen({
   onTurnTimeout,
   onomatopoeiaList,
   onChooseOnomatopoeia,
+  deckName,
 }: GameScreenProps) {
-  const [timeLeft, setTimeLeft] = useState(15);
+  const [timeLeft, setTimeLeft] = useState(60);
   const displayedCard = currentCard || "fallback.jpg";
 
   useEffect(() => {
     setTimeLeft(60);
   }, [parentPlayer]);
-
-  useEffect(() => {
-    console.log('GameScreenでのオノマトペリスト:', onomatopoeiaList);
-  }, [onomatopoeiaList]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -71,20 +69,22 @@ export default function GameScreen({
       </div>
 
       <div className="main">
-        <img src={`/images/${displayedCard}`} alt="カード" className="card-img" />
+        <img
+          src={`/images/${deckName}/${displayedCard}`}
+          alt="カード"
+          className="card-img"
+        />
 
         {parentPlayer && myId === parentPlayer.id ? (
           <>
-            {!onomatopoeiaList.length && (
+            {!onomatopoeiaList.length ? (
               <>
                 <button onClick={onDrawCard} disabled={hasDrawnCard}>
                   カードを引く
                 </button>
                 <div>残り時間: {timeLeft}秒</div>
               </>
-            )}
-
-            {onomatopoeiaList.length > 0 && (
+            ) : (
               <div className="onomatopoeia-list">
                 <h4>オノマトペを選んで！</h4>
                 {onomatopoeiaList.map((item, idx) => (

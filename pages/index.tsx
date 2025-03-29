@@ -28,7 +28,7 @@ export default function Home() {
   const [onomatopoeiaList, setOnomatopoeiaList] = useState([]);
 
   useEffect(() => {
-    socketRef.current = io(process.env.NEXT_PUBLIC_SOCKET_SERVER || "http://localhost:5001");
+    socketRef.current = io("http://localhost:5000");
   
     socketRef.current.on("connect", () => {
       setMyId(socketRef.current.id);
@@ -79,11 +79,11 @@ export default function Home() {
     };
   }, []);
   
-  
+  const [deckName, setDeckName] = useState("Stone");
 
   const createAndJoinRoom = () => {
     if (!roomId || !playerName) return;
-    socketRef.current.emit("createRoom", { roomId, playerName });
+    socketRef.current.emit("createRoom", { roomId, playerName, deckName }); // ★deckName追加
     setGameState("waiting");
   };
 
@@ -124,6 +124,8 @@ export default function Home() {
     socketRef.current.emit("nextTurn", roomId);
   };
 
+  
+
   return (
     <div className="container">
       {gameState === "title" && (
@@ -136,14 +138,16 @@ export default function Home() {
         />
       )}
       {gameState === "createRoom" && (
-        <CreateRoomScreen 
-          roomId={roomId}
-          playerName={playerName}
-          onPlayerNameChange={(e) => setPlayerName(e.target.value)}
-          onCreateAndJoin={createAndJoinRoom}
-          onBack={() => setGameState("title")}
-          errorMessage={errorMessage}
-        />
+        <CreateRoomScreen
+        roomId={roomId}
+        playerName={playerName}
+        deckName={deckName}
+        onPlayerNameChange={(e) => setPlayerName(e.target.value)}
+        onDeckChange={(e) => setDeckName(e.target.value)}
+        onCreateAndJoin={createAndJoinRoom}
+        onBack={() => setGameState("title")}
+        errorMessage={errorMessage}
+      />
       )}
       {gameState === "joinRoom" && (
         <JoinRoomScreen 
@@ -169,20 +173,21 @@ export default function Home() {
       )}
       {(gameState === "game" || gameState === "gameOver") && (
         <GameScreen
-          players={players}
-          parentPlayer={parentPlayer}
-          myId={myId}
-          currentCard={currentCard}
-          onDrawCard={drawCard}
-          hasDrawnCard={hasDrawnCard}
-          onSendOnomatopoeia={submitOnomatopoeia}
-          onOnomatopoeiaChange={(e) => setOnomatopoeia(e.target.value)}
-          onomatopoeia={onomatopoeia}
-          onTurnTimeout={handleTurnTimeout}
-          socketRef={socketRef}
-          onomatopoeiaList={onomatopoeiaList}
-          onChooseOnomatopoeia={chooseOnomatopoeia}
-        />
+        players={players}
+        parentPlayer={parentPlayer}
+        myId={myId}
+        currentCard={currentCard}
+        onDrawCard={drawCard}
+        hasDrawnCard={hasDrawnCard}
+        onSendOnomatopoeia={submitOnomatopoeia}
+        onOnomatopoeiaChange={(e) => setOnomatopoeia(e.target.value)}
+        onomatopoeia={onomatopoeia}
+        onTurnTimeout={handleTurnTimeout}
+        socketRef={socketRef}
+        onomatopoeiaList={onomatopoeiaList}
+        onChooseOnomatopoeia={chooseOnomatopoeia}
+        deckName={deckName}
+      />
       )}
     </div>
   );
