@@ -60,7 +60,10 @@ export default function GameScreen({
         <h3>プレイヤー一覧</h3>
         <ul>
           {players.map((player, index) => (
-            <li key={index}>
+            <li
+              key={index}
+              className={player.id === parentPlayer?.id ? "parent" : ""}
+            >
               {player.name} ({player.points}点)
               {player.id === parentPlayer?.id ? " [親]" : " [子]"}
             </li>
@@ -82,7 +85,8 @@ export default function GameScreen({
                 <button onClick={onDrawCard} disabled={hasDrawnCard}>
                   カードを引く
                 </button>
-                <div>残り時間: {timeLeft}秒</div>
+                <div className="timer">残り時間: {timeLeft}秒</div>
+
               </>
             ) : (
               <div className="onomatopoeia-list">

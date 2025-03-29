@@ -204,3 +204,74 @@ li:hover {
 .back-btn:hover {
   background-color: #0066a1;
 }
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.screen {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+/* 親プレイヤーを強調表示するスタイル */
+.sidebar ul li.parent {
+  background-color: #ffecb3; /* 明るい黄色系 */
+  border: 2px solid #ffa000;
+  font-weight: bold;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.timer {
+  color: #d32f2f; /* 赤色系 */
+  font-weight: bold;
+  animation: blink 1s infinite;
+  font-size: 1.5rem;
+  margin: 10px 0;
+}
+
+/* レスポンシブ対応（スマホ） */
+@media (max-width: 768px) {
+  .container {
+    padding: 15px 20px;
+  }
+
+  .game-screen {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .sidebar {
+    width: 100%;
+    flex-direction: row;
+    overflow-x: auto;
+    padding: 10px;
+  }
+
+  .sidebar ul {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    margin: 0 auto;
+  }
+
+  .sidebar ul li {
+    flex: 0 0 auto;
+    padding: 5px 10px;
+  }
+
+  .main {
+    width: 100%;
+    padding: 10px;
+  }
+
+  .card-img {
+    max-width: 100%;
+    border-width: 5px;
+  }
+}
+

@@ -43,6 +43,28 @@ io.on('connection', (socket) => {
     io.to(roomId).emit('updatePlayers', rooms[roomId].players);
   });
 
+  socket.on('joinRoom', ({ roomId, playerName }) => {
+    console.log(`joinRoomが呼ばれました: 部屋(${roomId}), プレイヤー名(${playerName})`);
+  
+    if (!rooms[roomId]) {
+      socket.emit('error', 'Room does not exist');
+      console.log('エラー: 部屋が存在しません');
+      return;
+    }
+  
+    if (rooms[roomId].players.some(player => player.name === playerName)) {
+      socket.emit('error', 'Name already taken in this room');
+      console.log('エラー: 名前が重複しています');
+      return;
+    }
+  
+    rooms[roomId].players.push({ id: socket.id, name: playerName, points: 0 });
+    socket.join(roomId);
+    
+    io.to(roomId).emit('updatePlayers', rooms[roomId].players);
+    console.log(`部屋(${roomId})のプレイヤー一覧を更新:`, rooms[roomId].players);
+  });
+
   socket.on('startGame', (roomId) => {
     const room = rooms[roomId];
     if (!room) return;

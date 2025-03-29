@@ -35,7 +35,6 @@ export default function Home() {
     });
   
     socketRef.current.on("onomatopoeiaList", (list) => {
-      console.log('クライアントが受け取ったオノマトペリスト:', list);  // このログを必ず残してね！
       setOnomatopoeiaList(list);
     });
   
@@ -43,7 +42,11 @@ export default function Home() {
   
     socketRef.current.on("gameStarted", (player) => {
       setParentPlayer(player);
-      setGameState("game");
+      setGameState("game");  // ←【重要】全プレイヤーで必ずセットする！
+    });
+  
+    socketRef.current.on("updateRoomInfo", (roomInfo) => {
+      setDeckName(roomInfo.deckName); // デッキ名も同期する
     });
   
     socketRef.current.on("cardDrawn", setCurrentCard);
@@ -78,6 +81,7 @@ export default function Home() {
       socketRef.current.disconnect();
     };
   }, []);
+  
   
   const [deckName, setDeckName] = useState("Stone");
 
