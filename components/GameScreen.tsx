@@ -1,5 +1,5 @@
-// components/GameScreen.tsx（完全版・修正版）
-import React, { useState, useEffect } from "react"; // ★useStateとuseEffectをインポート★
+// components/GameScreen.tsx（完全版）
+import React, { useState, useEffect } from "react";
 
 interface GameScreenProps {
   players: any[];
@@ -34,13 +34,23 @@ export default function GameScreen({
   deckName,
 }: GameScreenProps) {
   const [timeLeft, setTimeLeft] = useState(60);
-  const displayedCard = currentCard || "fallback.jpg";
+  const [timerActive, setTimerActive] = useState(false); // タイマーを有効にするフラグを追加
+
+  const displayedCard = currentCard ? `/images/${deckName}/${currentCard}` : "/images/fallback.jpg";
+
+  // カードが引かれた時に初めてタイマーを起動
+  useEffect(() => {
+    if (currentCard) {
+      setTimeLeft(60);
+      setTimerActive(true);
+    } else {
+      setTimerActive(false);
+    }
+  }, [currentCard]);
 
   useEffect(() => {
-    setTimeLeft(60);
-  }, [parentPlayer]);
+    if (!timerActive) return; // タイマーが非アクティブなら処理しない
 
-  useEffect(() => {
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
@@ -51,8 +61,9 @@ export default function GameScreen({
         return prev - 1;
       });
     }, 1000);
+
     return () => clearInterval(timer);
-  }, [onTurnTimeout, parentPlayer]);
+  }, [timerActive, onTurnTimeout]);
 
   return (
     <div className="game-screen">
@@ -60,10 +71,7 @@ export default function GameScreen({
         <h3>プレイヤー一覧</h3>
         <ul>
           {players.map((player, index) => (
-            <li
-              key={index}
-              className={player.id === parentPlayer?.id ? "parent" : ""}
-            >
+            <li key={index} className={player.id === parentPlayer?.id ? "parent" : ""}>
               {player.name} ({player.points}点)
               {player.id === parentPlayer?.id ? " [親]" : " [子]"}
             </li>
@@ -73,7 +81,7 @@ export default function GameScreen({
 
       <div className="main">
         <img
-          src={`/images/${deckName}/${displayedCard}`}
+          src={displayedCard}  // ← 初期カードが表示される
           alt="カード"
           className="card-img"
         />
@@ -85,8 +93,7 @@ export default function GameScreen({
                 <button onClick={onDrawCard} disabled={hasDrawnCard}>
                   カードを引く
                 </button>
-                <div className="timer">残り時間: {timeLeft}秒</div>
-
+                {timerActive && <div className="timer">残り時間: {timeLeft}秒</div>}
               </>
             ) : (
               <div className="onomatopoeia-list">
@@ -110,7 +117,7 @@ export default function GameScreen({
               placeholder="オノマトペ"
             />
             <button onClick={onSendOnomatopoeia}>送信</button>
-            <div>残り時間: {timeLeft}秒</div>
+            {timerActive && <div className="timer">残り時間: {timeLeft}秒</div>}
           </>
         )}
       </div>
