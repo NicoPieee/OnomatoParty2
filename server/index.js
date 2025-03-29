@@ -77,13 +77,17 @@ io.on('connection', (socket) => {
   socket.on('drawCard', (roomId) => {
     const room = rooms[roomId];
     if (!room) return;
-
+  
     const currentPlayer = room.players[room.currentTurnPlayerIndex];
     if (socket.id !== currentPlayer.id) return;
-
+  
     const card = room.deck.pop();
     if (!card) {
-      io.to(roomId).emit('gameOver', room.players.reduce((a, b) => (a.points > b.points ? a : b)));
+      // ゲーム終了直前に最終プレイヤー情報をコピー
+      const finalPlayers = [...room.players];
+      const maxPoints = Math.max(...finalPlayers.map(p => p.points));
+      const winners = finalPlayers.filter(p => p.points === maxPoints);
+      io.to(roomId).emit('gameOver', { winners, players: finalPlayers });
       return;
     }
     io.to(roomId).emit('cardDrawn', card);
@@ -130,14 +134,25 @@ io.on('connection', (socket) => {
 
     io.to(roomId).emit('onomatopoeiaChosen', {
       chosenPlayer,
-      updatedPlayers: room.players
+      updatedPlayers: room.players,
     });
 
     room.onomatopoeiaList = [];
 
+    // 山札が空になっていて、最後のオノマトペ選択の場合はゲーム終了！
+    if (room.deck.length === 0) {
+      // ゲーム終了直前に最終プレイヤー情報をコピー
+      const finalPlayers = [...room.players];
+      const maxPoints = Math.max(...finalPlayers.map(p => p.points));
+      const winners = finalPlayers.filter(p => p.points === maxPoints);
+      io.to(roomId).emit('gameOver', { winners, players: finalPlayers });
+      return;
+    }
+
     room.currentTurnPlayerIndex = (room.currentTurnPlayerIndex + 1) % room.players.length;
     io.to(roomId).emit('newTurn', room.players[room.currentTurnPlayerIndex]);
   });
+
 
   socket.on('nextTurn', (roomId) => {
     const room = rooms[roomId];
@@ -167,7 +182,7 @@ io.on('connection', (socket) => {
   });
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

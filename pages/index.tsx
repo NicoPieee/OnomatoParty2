@@ -6,6 +6,7 @@ import CreateRoomScreen from "../components/CreateRoomScreen";
 import JoinRoomScreen from "../components/JoinRoomScreen";
 import WaitingScreen from "../components/WaitingScreen";
 import GameScreen from "../components/GameScreen";
+import GameOverScreen from "../components/GameOverScreen";
 
 const generateRoomId = () => {
   return Math.floor(Math.random() * 10000).toString().padStart(4, "0");
@@ -19,7 +20,7 @@ export default function Home() {
   const [players, setPlayers] = useState([]);
   const [currentCard, setCurrentCard] = useState(null);
   const [onomatopoeia, setOnomatopoeia] = useState("");
-  const [winner, setWinner] = useState(null);
+  const [winners, setWinners] = useState(null);
   const [parentPlayer, setParentPlayer] = useState(null);
   const [gameState, setGameState] = useState("title");
   const [availableRooms, setAvailableRooms] = useState([]);
@@ -28,7 +29,7 @@ export default function Home() {
   const [onomatopoeiaList, setOnomatopoeiaList] = useState([]);
 
   useEffect(() => {
-    socketRef.current = io("http://localhost:5000");
+    socketRef.current = io(process.env.NEXT_PUBLIC_SOCKET_SERVER || "http://localhost:5001");
   
     socketRef.current.on("connect", () => {
       setMyId(socketRef.current.id);
@@ -70,9 +71,11 @@ export default function Home() {
       setPlayers(data.updatedPlayers);
     });
   
-    socketRef.current.on("gameOver", (winnerData) => {
-      setWinner(winnerData);
-      setGameState("gameOver");
+    socketRef.current.on("gameOver", ({ winners, players }) => {
+      setWinners(winners);
+      setPlayers(players);  // 必ずプレイヤーデータを更新！
+      setGameState("gameOver");  // すぐに GameOverScreen に切り替え
+      setCurrentCard(null);  // (推奨) カード情報もリセットしておく
     });
   
     socketRef.current.emit("getRooms");
@@ -143,15 +146,15 @@ export default function Home() {
       )}
       {gameState === "createRoom" && (
         <CreateRoomScreen
-        roomId={roomId}
-        playerName={playerName}
-        deckName={deckName}
-        onPlayerNameChange={(e) => setPlayerName(e.target.value)}
-        onDeckChange={(e) => setDeckName(e.target.value)}
-        onCreateAndJoin={createAndJoinRoom}
-        onBack={() => setGameState("title")}
-        errorMessage={errorMessage}
-      />
+          roomId={roomId}
+          playerName={playerName}
+          deckName={deckName}
+          onPlayerNameChange={(e) => setPlayerName(e.target.value)}
+          onDeckChange={(e) => setDeckName(e.target.value)}
+          onCreateAndJoin={createAndJoinRoom}
+          onBack={() => setGameState("title")}
+          errorMessage={errorMessage}
+        />
       )}
       {gameState === "joinRoom" && (
         <JoinRoomScreen 
@@ -175,23 +178,40 @@ export default function Home() {
           onBack={() => setGameState("title")}
         />
       )}
-      {(gameState === "game" || gameState === "gameOver") && (
+      {gameState === "game" && (  /* ★ここを修正！gameだけにする */
         <GameScreen
-        players={players}
-        parentPlayer={parentPlayer}
-        myId={myId}
-        currentCard={currentCard}
-        onDrawCard={drawCard}
-        hasDrawnCard={hasDrawnCard}
-        onSendOnomatopoeia={submitOnomatopoeia}
-        onOnomatopoeiaChange={(e) => setOnomatopoeia(e.target.value)}
-        onomatopoeia={onomatopoeia}
-        onTurnTimeout={handleTurnTimeout}
-        socketRef={socketRef}
-        onomatopoeiaList={onomatopoeiaList}
-        onChooseOnomatopoeia={chooseOnomatopoeia}
-        deckName={deckName}
-      />
+          players={players}
+          parentPlayer={parentPlayer}
+          myId={myId}
+          currentCard={currentCard}
+          onDrawCard={drawCard}
+          hasDrawnCard={hasDrawnCard}
+          onSendOnomatopoeia={submitOnomatopoeia}
+          onOnomatopoeiaChange={(e) => setOnomatopoeia(e.target.value)}
+          onomatopoeia={onomatopoeia}
+          onTurnTimeout={handleTurnTimeout}
+          socketRef={socketRef}
+          onomatopoeiaList={onomatopoeiaList}
+          onChooseOnomatopoeia={chooseOnomatopoeia}
+          deckName={deckName}
+        />
+      )}
+      {gameState === "gameOver" && ( /* ★gameOverの追加！ */
+        <GameOverScreen
+          winners={winners}  // 必ず winners として渡す！
+          players={players}
+          onReset={() => {
+            setGameState("title");
+            setPlayers([]);
+            setWinners(null);
+            setCurrentCard(null);
+            setRoomId("");
+            setPlayerName("");
+            setOnomatopoeia("");
+            setHasDrawnCard(false);
+            setOnomatopoeiaList([]);
+          }}
+        />
       )}
     </div>
   );

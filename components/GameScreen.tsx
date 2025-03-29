@@ -70,12 +70,16 @@ export default function GameScreen({
       <div className="sidebar">
         <h3>プレイヤー一覧</h3>
         <ul>
-          {players.map((player, index) => (
-            <li key={index} className={player.id === parentPlayer?.id ? "parent" : ""}>
-              {player.name} ({player.points}点)
-              {player.id === parentPlayer?.id ? " [親]" : " [子]"}
-            </li>
-          ))}
+          {players && players.length > 0 ? (
+            players.map((player, index) => (
+              <li key={index} className={player.id === parentPlayer?.id ? "parent" : ""}>
+                {player.name} ({player.points}点)
+                {player.id === parentPlayer?.id ? " [親]" : " [子]"}
+              </li>
+            ))
+          ) : (
+            <li>プレイヤー情報がありません</li>
+          )}
         </ul>
       </div>
 
