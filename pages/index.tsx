@@ -1,4 +1,3 @@
-// pages/index.tsx
 import { useState, useEffect, useRef } from "react";
 import { io } from "socket.io-client";
 import TitleScreen from "../components/TitleScreen";
@@ -43,11 +42,11 @@ export default function Home() {
   
     socketRef.current.on("gameStarted", (player) => {
       setParentPlayer(player);
-      setGameState("game");  // ←【重要】全プレイヤーで必ずセットする！
+      setGameState("game");
     });
   
     socketRef.current.on("updateRoomInfo", (roomInfo) => {
-      setDeckName(roomInfo.deckName); // デッキ名も同期する
+      setDeckName(roomInfo.deckName);
     });
   
     socketRef.current.on("cardDrawn", setCurrentCard);
@@ -73,9 +72,9 @@ export default function Home() {
   
     socketRef.current.on("gameOver", ({ winners, players }) => {
       setWinners(winners);
-      setPlayers(players);  // 必ずプレイヤーデータを更新！
-      setGameState("gameOver");  // すぐに GameOverScreen に切り替え
-      setCurrentCard(null);  // (推奨) カード情報もリセットしておく
+      setPlayers(players);
+      setGameState("gameOver");
+      setCurrentCard(null);
     });
   
     socketRef.current.emit("getRooms");
@@ -178,7 +177,7 @@ export default function Home() {
           onBack={() => setGameState("title")}
         />
       )}
-      {gameState === "game" && (  /* ★ここを修正！gameだけにする */
+      {gameState === "game" && (
         <GameScreen
           players={players}
           parentPlayer={parentPlayer}
@@ -196,9 +195,9 @@ export default function Home() {
           deckName={deckName}
         />
       )}
-      {gameState === "gameOver" && ( /* ★gameOverの追加！ */
+      {gameState === "gameOver" && (
         <GameOverScreen
-          winners={winners}  // 必ず winners として渡す！
+          winners={winners}
           players={players}
           onReset={() => {
             setGameState("title");

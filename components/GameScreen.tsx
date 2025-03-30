@@ -1,4 +1,4 @@
-// components/GameScreen.tsx（完全版）
+// components/GameScreen.tsx
 import React, { useState, useEffect } from "react";
 
 interface GameScreenProps {
@@ -34,23 +34,27 @@ export default function GameScreen({
   deckName,
 }: GameScreenProps) {
   const [timeLeft, setTimeLeft] = useState(60);
-  const [timerActive, setTimerActive] = useState(false); // タイマーを有効にするフラグを追加
+  const [timerActive, setTimerActive] = useState(false);
+  const [hasSentOnomatopoeia, setHasSentOnomatopoeia] = useState(false);
 
-  const displayedCard = currentCard ? `/images/${deckName}/${currentCard}` : "/images/fallback.jpg";
+  const displayedCard = currentCard
+    ? `/images/${deckName}/${currentCard}`
+    : "/images/fallback.jpg";
 
-  // カードが引かれた時に初めてタイマーを起動
+  // カードが引かれた時にタイマーと送信ボタンを初期化
   useEffect(() => {
     if (currentCard) {
       setTimeLeft(60);
       setTimerActive(true);
+      setHasSentOnomatopoeia(false); // カードを引いたら送信ボタンも再有効化
     } else {
       setTimerActive(false);
     }
   }, [currentCard]);
 
+  // タイマー処理
   useEffect(() => {
-    if (!timerActive) return; // タイマーが非アクティブなら処理しない
-
+    if (!timerActive) return;
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
@@ -61,14 +65,13 @@ export default function GameScreen({
         return prev - 1;
       });
     }, 1000);
-
     return () => clearInterval(timer);
   }, [timerActive, onTurnTimeout]);
 
   return (
     <div className="game-screen">
       <div className="sidebar">
-        <h3>プレイヤー一覧</h3>
+        <h3>プレイヤー</h3>
         <ul>
           {players && players.length > 0 ? (
             players.map((player, index) => (
@@ -84,17 +87,21 @@ export default function GameScreen({
       </div>
 
       <div className="main">
-        <img
-          src={displayedCard}  // ← 初期カードが表示される
-          alt="カード"
-          className="card-img"
-        />
+        <img src={displayedCard} alt="カード" className="card-img" />
 
         {parentPlayer && myId === parentPlayer.id ? (
+          // 親プレイヤー用の画面
           <>
             {!onomatopoeiaList.length ? (
               <>
-                <button onClick={onDrawCard} disabled={hasDrawnCard}>
+                <button
+                  onClick={onDrawCard}
+                  disabled={hasDrawnCard}
+                  style={{
+                    backgroundColor: hasDrawnCard ? "grey" : "#00BCD4",
+                    cursor: hasDrawnCard ? "not-allowed" : "pointer",
+                  }}
+                >
                   カードを引く
                 </button>
                 {timerActive && <div className="timer">残り時間: {timeLeft}秒</div>}
@@ -103,10 +110,7 @@ export default function GameScreen({
               <div className="onomatopoeia-list">
                 <h4>オノマトペを選んで！</h4>
                 {onomatopoeiaList.map((item, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => onChooseOnomatopoeia(item.playerId)}
-                  >
+                  <button key={idx} onClick={() => onChooseOnomatopoeia(item.playerId)}>
                     {item.onomatopoeia}
                   </button>
                 ))}
@@ -114,13 +118,26 @@ export default function GameScreen({
             )}
           </>
         ) : (
+          // 子プレイヤー用の画面
           <>
             <input
               value={onomatopoeia}
               onChange={onOnomatopoeiaChange}
-              placeholder="オノマトペ"
+              placeholder="オノマトペを入力してください！"
             />
-            <button onClick={onSendOnomatopoeia}>送信</button>
+            <button
+              onClick={() => {
+                onSendOnomatopoeia();
+                setHasSentOnomatopoeia(true);
+              }}
+              disabled={!currentCard || hasSentOnomatopoeia || !onomatopoeia}
+              style={{
+                backgroundColor: !currentCard || hasSentOnomatopoeia ? "grey" : "#00BCD4",
+                cursor: !currentCard || hasSentOnomatopoeia ? "not-allowed" : "pointer",
+              }}
+            >
+              送信
+            </button>
             {timerActive && <div className="timer">残り時間: {timeLeft}秒</div>}
           </>
         )}
