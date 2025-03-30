@@ -123,7 +123,7 @@ export default function GameScreen({
             <input
               value={onomatopoeia}
               onChange={onOnomatopoeiaChange}
-              placeholder="オノマトペを入力してください！"
+              placeholder="オノマトペを入力してください"
             />
             <button
               onClick={() => {

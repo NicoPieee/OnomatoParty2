@@ -1,5 +1,7 @@
+// pages/index.tsx
 import { useState, useEffect, useRef } from "react";
 import { io } from "socket.io-client";
+import { toast } from "react-toastify"; // ← 追加
 import TitleScreen from "../components/TitleScreen";
 import CreateRoomScreen from "../components/CreateRoomScreen";
 import JoinRoomScreen from "../components/JoinRoomScreen";
@@ -26,38 +28,41 @@ export default function Home() {
   const [errorMessage, setErrorMessage] = useState("");
   const [hasDrawnCard, setHasDrawnCard] = useState(false);
   const [onomatopoeiaList, setOnomatopoeiaList] = useState([]);
+  const [deckName, setDeckName] = useState("Stone");
 
   useEffect(() => {
-    socketRef.current = io(process.env.NEXT_PUBLIC_SOCKET_SERVER || "http://localhost:5001");
-  
+    socketRef.current = io(
+      process.env.NEXT_PUBLIC_SOCKET_SERVER || "http://localhost:5001"
+    );
+
     socketRef.current.on("connect", () => {
       setMyId(socketRef.current.id);
     });
-  
+
     socketRef.current.on("onomatopoeiaList", (list) => {
       setOnomatopoeiaList(list);
     });
-  
+
     socketRef.current.on("updatePlayers", setPlayers);
-  
+
     socketRef.current.on("gameStarted", (player) => {
       setParentPlayer(player);
       setGameState("game");
     });
-  
+
     socketRef.current.on("updateRoomInfo", (roomInfo) => {
       setDeckName(roomInfo.deckName);
     });
-  
+
     socketRef.current.on("cardDrawn", setCurrentCard);
-  
+
     socketRef.current.on("roomsList", setAvailableRooms);
-  
+
     socketRef.current.on("error", (msg) => {
       setErrorMessage(msg);
       setTimeout(() => setErrorMessage(""), 3000);
     });
-  
+
     socketRef.current.on("newTurn", (nextParentPlayer) => {
       setParentPlayer(nextParentPlayer);
       setCurrentCard(null);
@@ -65,31 +70,35 @@ export default function Home() {
       setHasDrawnCard(false);
       setOnomatopoeiaList([]);
     });
-  
+
     socketRef.current.on("onomatopoeiaChosen", (data) => {
       setPlayers(data.updatedPlayers);
+      if (data.chosenPlayer) {
+        toast.success(`${data.chosenPlayer.name} がポイントを獲得しました！`, {
+          className: "custom-toast",
+          icon: <span>🎉</span>,
+        });
+      }
     });
-  
+    
+
     socketRef.current.on("gameOver", ({ winners, players }) => {
       setWinners(winners);
       setPlayers(players);
       setGameState("gameOver");
       setCurrentCard(null);
     });
-  
+
     socketRef.current.emit("getRooms");
-  
+
     return () => {
       socketRef.current.disconnect();
     };
   }, []);
-  
-  
-  const [deckName, setDeckName] = useState("Stone");
 
   const createAndJoinRoom = () => {
     if (!roomId || !playerName) return;
-    socketRef.current.emit("createRoom", { roomId, playerName, deckName }); // ★deckName追加
+    socketRef.current.emit("createRoom", { roomId, playerName, deckName });
     setGameState("waiting");
   };
 
@@ -130,12 +139,11 @@ export default function Home() {
     socketRef.current.emit("nextTurn", roomId);
   };
 
-  
-
   return (
     <div className="container">
+      {errorMessage && <div className="error">{errorMessage}</div>}
       {gameState === "title" && (
-        <TitleScreen 
+        <TitleScreen
           onCreateRoom={() => {
             setRoomId(generateRoomId());
             setGameState("createRoom");
@@ -156,7 +164,7 @@ export default function Home() {
         />
       )}
       {gameState === "joinRoom" && (
-        <JoinRoomScreen 
+        <JoinRoomScreen
           roomId={roomId}
           playerName={playerName}
           onRoomIdChange={(e) => setRoomId(e.target.value)}
@@ -169,7 +177,7 @@ export default function Home() {
         />
       )}
       {gameState === "waiting" && (
-        <WaitingScreen 
+        <WaitingScreen
           roomId={roomId}
           players={players}
           myId={myId}
