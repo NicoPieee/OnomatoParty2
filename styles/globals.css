@@ -1,27 +1,54 @@
-/* Google FontsからMontserratを利用する場合、必要に応じてHTMLの<head>にリンクを追加する */
-/* 例: <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet"> */
-
-/* 基本のレイアウト */
+/* --- 全体背景 --- */
 body {
-  font-family: 'Montserrat', sans-serif;
-  font-weight: 500;
-  background-color: #e0f7fa; /* 水色ベース */
+  background: #ffffff;
   margin: 0;
   padding: 0;
+  height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 100vh;
+  font-family: "Poppins", sans-serif;
 }
 
-/* メインコンテナ */
+/* --- 親ラッパー --- */
+.wrapper {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* タイトル、部屋作成、参加、待機画面用 */
+.glass-container {
+  position: fixed; /* ✅ fixed で画面中央に固定 */
+  top: 50%;
+  left: 50%;
+  width: 90%; /* 幅は90%にして、レスポンシブ対応 */
+  max-width: 1200px; /* 最大幅 */
+  height: auto; /* 高さはコンテンツによる */
+  transform: translate(-50%, -50%); /* ✅ 位置を中央に調整 */
+  background: rgba(15, 83, 255, 0.3); /* やわらかい水色の半透明 */
+  backdrop-filter: blur(12px);
+  border-radius: 20px; /* 角丸 */
+  padding: 30px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1); /* シャドウで立体感 */
+  z-index: 1;
+}
+
+/* --- メインコンテナ --- */
+/* ゲーム画面、ゲーム終了画面は従来のレイアウト */
 .container {
+  position: relative;
+  z-index: 2;
   background: #ffffff;
   padding: 30px 40px;
   border-radius: 10px;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
-  max-width: 900px;
-  width: 100%;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+  max-width: 1100px;
+  width: 170%;
+  margin: 300px auto; /* 上下左右の余白を設定 */
   text-align: center;
   transition: transform 0.2s ease;
 }
@@ -29,20 +56,20 @@ body {
   transform: translateY(-2px);
 }
 
-/* タイトル・見出し */
+/* --- タイトル・見出し --- */
 h1 {
   font-size: 2.5rem;
-  color: #0077c2;
+  color: #0288d1;  /* 濃い水色 */
   margin-bottom: 20px;
   font-weight: 700;
 }
 h2, h3 {
-  color: #0077c2;
+  color: #0288d1;
   margin: 20px 0;
   font-weight: 700;
 }
 
-/* 入力フィールド */
+/* --- 入力フィールド --- */
 input {
   padding: 12px;
   font-size: 1rem;
@@ -50,60 +77,114 @@ input {
   max-width: 500px;
   margin: 10px auto;
   display: block;
-  border: 2px solid #0077c2;
+  border: 2px solid #0288d1;
   border-radius: 6px;
   outline: none;
   transition: border-color 0.2s;
 }
-
 input:focus {
   border-color: #66b3ff;
 }
 
-/* ボタン */
+/* --- ボタン --- */
 button {
   padding: 12px 24px;
   font-size: 1rem;
-  background-color: #00bcd4;
+  background: linear-gradient(135deg, #4fc3f7, #0288d1);
   color: #fff;
   border: none;
-  border-radius: 6px;
+  border-radius: 25px;
   cursor: pointer;
   margin: 10px;
-  transition: background-color 0.3s, transform 0.2s;
+  transition: all 0.3s ease-in-out;
 }
-
 button:hover {
-  background-color: #0097a7;
-  transform: translateY(-2px);
+  background: linear-gradient(135deg, #03a9f4, #01579b);
+  transform: scale(1.05);
 }
 
-/* ボタングループ */
-.button-group {
-  margin: 20px 0;
-}
-
-/* エラーメッセージ */
+/* --- エラーメッセージ --- */
 .error {
-  color: red;
+  color: #ff5252;
   margin: 10px 0;
   font-weight: 700;
 }
 
-/* ルームID表示 */
+
+
+/* --- ルームID表示 --- */
+/* --- 部屋IDの強調表示 --- */
 .room-id {
-  font-weight: 700;
-  margin-bottom: 10px;
-  color: #0077c2;
+  font-size: 1.5rem; /* フォントサイズを大きく */
+  font-weight: bold; /* 太字で目立たせる */
+  color: #0288d1; /* 濃い水色で目立たせる */
+  margin-top: 20px;
+  margin-bottom: 20px;
+  padding: 10px;
+  background-color: #e1f5fe; /* 淡い水色で背景強調 */
+  border-radius: 8px;
+  display: inline-block; /* 幅を文字サイズに合わせる */
 }
 
-/* リスト共通 */
+
+/* --- デッキ選択エリア --- */
+.deck-selection {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 20px;
+}
+
+/* --- デッキカード --- */
+.deck-card {
+  width: 160px;
+  height: 120px;
+  padding: 20px;
+  background-color: #fff;
+  border-radius: 12px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+}
+
+.deck-title {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #ffffff; /* 文字色を白に */
+}
+
+.deck-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
+  border: 2px solid #4fc3f7;
+}
+
+/* --- 選択されたデッキの強調 --- */
+.deck-card.selected {
+  border: 7px solid #ffffff;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* --- 石デッキのスタイル --- */
+.stone-deck {
+  background:grey;
+}
+
+/* --- 水デッキのスタイル --- */
+.water-deck {
+  background:rgb(61, 200, 255);
+}
+
+/* --- リスト共通 --- */
 ul {
   list-style: none;
   padding: 0;
   margin: 20px 0;
 }
-
 li {
   padding: 10px;
   font-size: 1.1rem;
@@ -111,15 +192,14 @@ li {
   margin-bottom: 10px;
   transition: background-color 0.2s;
 }
-
 li:last-child {
   margin-bottom: 0;
 }
 li:hover {
-  background-color: #e0f7fa;
+  background-color: #e1f5fe;
 }
 
-/* ゲーム画面のレイアウト */
+/* --- ゲーム画面のレイアウト --- */
 .game-screen {
   display: flex;
   width: 100%;
@@ -127,27 +207,65 @@ li:hover {
   align-items: flex-start;
 }
 
-/* サイドバー（プレイヤーリスト） */
+/* --- サイドバー（プレイヤーリスト） --- */
 .sidebar {
-  flex: 0 0 220px;
-  background-color: #b2ebf2;
+  flex: 0 0 260px; /* 幅を少し広げて余裕を持たせる */
+  background: rgba(255, 255, 255, 0.6); /* 半透明の白 */
+  backdrop-filter: blur(12px); /* ガラスモーフィズム */
   padding: 20px;
-  border-radius: 8px;
+  border-radius: 12px; /* 角丸を強調 */
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15); /* 立体感のあるシャドウ */
   text-align: left;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
+  border: 1px solid rgba(255, 255, 255, 0.4); /* 境界線でふんわり感を演出 */
 }
 
-/* プレイヤーリスト内の各プレイヤー名に枠を付与 */
+.sidebar ul {
+  padding: 0;
+  margin-top: 10px;
+}
+
 .sidebar ul li {
-  border-radius: 4px;
-  padding: 8px;
+  border-radius: 8px;
+  border: 2px solid #a2d2ff;
+  padding: 12px 16px;
   margin-bottom: 10px;
   background-color: #ffffff;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease-in-out;
+  cursor: pointer;
 }
 
-/* メインエリア（カード表示など） */
+.sidebar ul li:hover {
+  background-color: #95dcf7;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 188, 212, 0.3);
+}
+
+/* --- 親プレイヤー強調 --- */
+.sidebar ul li.parent {
+  background-color: #ffffff;
+  border: 2px solid #2897ff;
+  font-weight: bold;border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease-in-out;
+  cursor: pointer;
+  color: #007bff;
+  box-shadow: 0 6px 16px rgba(0, 188, 212, 0.3);
+}
+
+.sidebar ul li.parent:hover {
+  background-color: #7ed2ff;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 188, 212, 0.3);
+}
+
+
+/* --- メインエリア（カード表示など） --- */
 .main {
   flex: 1;
   background-color: #ffffff;
@@ -158,8 +276,6 @@ li:hover {
   flex-direction: column;
   justify-content: flex-start;
 }
-
-/* カード画像：最大幅600px、比率維持 */
 .card-img {
   max-width: 600px;
   height: auto;
@@ -174,12 +290,10 @@ li:hover {
   transform: translateY(-2px);
 }
 
-/* アクションエリア */
+/* --- アクションエリア --- */
 .action-area {
   margin-top: auto;
 }
-
-/* アクションボタン */
 .action-btn {
   background-color: #00acc1;
   margin: 10px;
@@ -190,130 +304,103 @@ li:hover {
   transform: translateY(-2px);
 }
 
-/* 子プレイヤー用アクション */
+/* --- 子プレイヤー用アクション --- */
 .child-actions {
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
-/* 戻るボタン */
+/* --- 戻るボタン --- */
 .back-btn {
-  background-color: #0077c2;
+  background-color: #0288d1;
 }
 .back-btn:hover {
-  background-color: #0066a1;
+  background-color: #01579b;
 }
 
+/* --- アニメーション --- */
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
-
 .screen {
   animation: fadeIn 0.5s ease-in-out;
 }
 
-/* 親プレイヤーを強調表示するスタイル */
-.sidebar ul li.parent {
-  background-color: #ffecb3; /* 明るい黄色系 */
-  border: 2px solid #ffa000;
-  font-weight: bold;
-}
 
+
+/* --- タイマー --- */
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
 }
-
 .timer {
-  color: #d32f2f; /* 赤色系 */
+  color: #d32f2f;
   font-weight: bold;
   animation: blink 1s infinite;
   font-size: 1.5rem;
   margin: 10px 0;
 }
 
-/* レスポンシブ対応（スマホ） */
+/* --- レスポンシブ対応 --- */
 @media (max-width: 768px) {
   .container {
     padding: 15px 20px;
   }
-
   .game-screen {
     flex-direction: column;
     gap: 10px;
   }
-
   .sidebar {
     width: 100%;
     flex-direction: row;
     overflow-x: auto;
     padding: 10px;
   }
-
   .sidebar ul {
     display: flex;
     flex-direction: row;
     gap: 10px;
     margin: 0 auto;
   }
-
   .sidebar ul li {
     flex: 0 0 auto;
     padding: 5px 10px;
   }
-
   .main {
     width: 100%;
     padding: 10px;
   }
-
   .card-img {
     max-width: 100%;
     border-width: 5px;
   }
 }
 
-/* トースト全体のカスタムスタイル */
+/* --- トースト通知カスタムスタイル --- */
 .custom-toast {
   background-color: #fff !important; /* 背景を白 */
-  color: #0288d1 !important; /* 文字を濃い水色 */
-  border: 1px solid #4dd0e1; /* 境界線も水色 */
-  border-radius: 12px; /* 角を丸く */
-  box-shadow: 0px 4px 12px rgba(0, 188, 212, 0.2); /* 水色の柔らかい影 */
+  color: #0288d1 !important;           /* 文字を濃い水色 */
+  border: 1px solid #4dd0e1;
+  border-radius: 12px;
+  box-shadow: 0px 4px 12px rgba(0, 188, 212, 0.2);
   font-size: 16px;
 }
-
-/* トースト本文のスタイル */
 .Toastify__toast-body {
   font-size: 18px;
   font-weight: bold;
 }
-
-/* プログレスバーのスタイルを青色系に */
 .Toastify__progress-bar {
-  background-color: #29b6f6 !important; /* プログレスバーを青系に */
-}
-
-/* トーストのアイコン部分 */
-.custom-toast .Toastify__toast-icon {
-  font-size: 24px;
-  color: #0288d1; /* アイコンも水色 */
-}
-
-/* トーストの閉じるボタンのスタイル */
-.Toastify__close-button {
-  color: #0288d1 !important; /* 閉じるボタンの色も水色 */
-}
-
-/* プログレスバーのトランジションを柔らかく */
-.Toastify__progress-bar {
-  height: 5px;
+  background-color: #29b6f6 !important; /* プログレスバーを青色系に */
+  height: 8px;
   border-radius: 5px;
   transition: width 0.25s ease-in-out;
 }
-
-.Toastify__progress-bar {
-  height: 8px; /* さらに太く */
+.custom-toast .Toastify__toast-icon {
+  font-size: 24px;
+  color: #0288d1;
+}
+.Toastify__close-button {
+  color: #0288d1 !important;
 }

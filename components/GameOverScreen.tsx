@@ -20,7 +20,7 @@ export default function GameOverScreen({
           <h3>勝者: {winners[0].name}（{winners[0].points} 点）</h3>
         ) : (
           <>
-            <h3>引き分け！勝者たち：</h3>
+            <h3>引き分け！勝者：</h3>
             <ul>
               {winners.map((winner, index) => (
                 <li key={index}>
