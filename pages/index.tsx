@@ -146,52 +146,50 @@ export default function Home() {
         gameState === "createRoom" ||
         gameState === "joinRoom" ||
         gameState === "waiting") ? (
-        <div className="glass-container">
-          <div className="container">
-            {gameState === "title" && (
-              <TitleScreen
-                onCreateRoom={() => {
-                  setRoomId(generateRoomId());
-                  setGameState("createRoom");
-                }}
-                onJoinRoom={() => setGameState("joinRoom")}
-              />
-            )}
-            {gameState === "createRoom" && (
-              <CreateRoomScreen
-                roomId={roomId}
-                playerName={playerName}
-                deckName={deckName}
-                onPlayerNameChange={(e) => setPlayerName(e.target.value)}
-                onDeckChange={(e) => setDeckName(e.target.value)}
-                onCreateAndJoin={createAndJoinRoom}
-                onBack={() => setGameState("title")}
-                errorMessage={errorMessage}
-              />
-            )}
-            {gameState === "joinRoom" && (
-              <JoinRoomScreen
-                roomId={roomId}
-                playerName={playerName}
-                onRoomIdChange={(e) => setRoomId(e.target.value)}
-                onPlayerNameChange={(e) => setPlayerName(e.target.value)}
-                onJoin={joinRoom}
-                onRefresh={refreshRooms}
-                onBack={() => setGameState("title")}
-                availableRooms={availableRooms}
-                errorMessage={errorMessage}
-              />
-            )}
-            {gameState === "waiting" && (
-              <WaitingScreen
-                roomId={roomId}
-                players={players}
-                myId={myId}
-                onStartGame={startGame}
-                onBack={() => setGameState("title")}
-              />
-            )}
-          </div>
+        <div className="container">
+          {gameState === "title" && (
+            <TitleScreen
+              onCreateRoom={() => {
+                setRoomId(generateRoomId());
+                setGameState("createRoom");
+              }}
+              onJoinRoom={() => setGameState("joinRoom")}
+            />
+          )}
+          {gameState === "createRoom" && (
+            <CreateRoomScreen
+              roomId={roomId}
+              playerName={playerName}
+              deckName={deckName}
+              onPlayerNameChange={(e) => setPlayerName(e.target.value)}
+              onDeckChange={(e) => setDeckName(e.target.value)}
+              onCreateAndJoin={createAndJoinRoom}
+              onBack={() => setGameState("title")}
+              errorMessage={errorMessage}
+            />
+          )}
+          {gameState === "joinRoom" && (
+            <JoinRoomScreen
+              roomId={roomId}
+              playerName={playerName}
+              onRoomIdChange={(e) => setRoomId(e.target.value)}
+              onPlayerNameChange={(e) => setPlayerName(e.target.value)}
+              onJoin={joinRoom}
+              onRefresh={refreshRooms}
+              onBack={() => setGameState("title")}
+              availableRooms={availableRooms}
+              errorMessage={errorMessage}
+            />
+          )}
+          {gameState === "waiting" && (
+            <WaitingScreen
+              roomId={roomId}
+              players={players}
+              myId={myId}
+              onStartGame={startGame}
+              onBack={() => setGameState("title")}
+            />
+          )}
         </div>
       ) : (
         // ゲーム中やゲーム終了画面は従来の container を使う

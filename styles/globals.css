@@ -10,48 +10,20 @@ body {
   font-family: "Poppins", sans-serif;
 }
 
-/* --- 親ラッパー --- */
-.wrapper {
-  position: relative;
-  width: 100%;
-  height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-/* タイトル、部屋作成、参加、待機画面用 */
-.glass-container {
-  position: fixed; /* ✅ fixed で画面中央に固定 */
-  top: 50%;
-  left: 50%;
-  width: 90%; /* 幅は90%にして、レスポンシブ対応 */
-  max-width: 1200px; /* 最大幅 */
-  height: auto; /* 高さはコンテンツによる */
-  transform: translate(-50%, -50%); /* ✅ 位置を中央に調整 */
-  background: rgba(15, 83, 255, 0.3); /* やわらかい水色の半透明 */
-  backdrop-filter: blur(12px);
-  border-radius: 20px; /* 角丸 */
-  padding: 30px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1); /* シャドウで立体感 */
-  z-index: 1;
-}
 
 /* --- メインコンテナ --- */
-/* ゲーム画面、ゲーム終了画面は従来のレイアウト */
 .container {
   position: relative;
   z-index: 2;
   background: #ffffff;
-  padding: 30px 40px;
+  padding: 60px 80px;
   border-radius: 10px;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
-  max-width: 1100px;
-  width: 170%;
-  margin: 300px auto; /* 上下左右の余白を設定 */
   text-align: center;
   transition: transform 0.2s ease;
 }
+
+
 .container:hover {
   transform: translateY(-2px);
 }
@@ -90,7 +62,7 @@ input:focus {
 button {
   padding: 12px 24px;
   font-size: 1rem;
-  background: linear-gradient(135deg, #4fc3f7, #0288d1);
+  background:rgb(28, 138, 229);
   color: #fff;
   border: none;
   border-radius: 25px;
@@ -99,7 +71,7 @@ button {
   transition: all 0.3s ease-in-out;
 }
 button:hover {
-  background: linear-gradient(135deg, #03a9f4, #01579b);
+  background:#01579b;
   transform: scale(1.05);
 }
 
@@ -138,7 +110,7 @@ button:hover {
 /* --- デッキカード --- */
 .deck-card {
   width: 160px;
-  height: 120px;
+  height: 70px;
   padding: 20px;
   background-color: #fff;
   border-radius: 12px;
@@ -202,16 +174,18 @@ li:hover {
 /* --- ゲーム画面のレイアウト --- */
 .game-screen {
   display: flex;
-  width: 100%;
+  max-width: 1200px; 
+  margin: 0 auto; 
   gap: 20px;
   align-items: flex-start;
+  justify-content: center;
 }
+
 
 /* --- サイドバー（プレイヤーリスト） --- */
 .sidebar {
   flex: 0 0 260px; /* 幅を少し広げて余裕を持たせる */
-  background: rgba(255, 255, 255, 0.6); /* 半透明の白 */
-  backdrop-filter: blur(12px); /* ガラスモーフィズム */
+  background: rgb(255, 255, 255);
   padding: 20px;
   border-radius: 12px; /* 角丸を強調 */
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15); /* 立体感のあるシャドウ */
@@ -277,7 +251,7 @@ li:hover {
   justify-content: flex-start;
 }
 .card-img {
-  max-width: 600px;
+  max-width: 650px;
   height: auto;
   display: block;
   margin: 20px auto;
