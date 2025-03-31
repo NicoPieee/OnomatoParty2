@@ -120,7 +120,7 @@ export default function Home() {
 
   const submitOnomatopoeia = () => {
     if (onomatopoeia) {
-      socketRef.current.emit("submitOnomatopoeia", roomId, onomatopoeia);
+      socketRef.current.emit('submitOnomatopoeia', roomId, onomatopoeia, playerName); // playerNameを追加送信
       setOnomatopoeia("");
     }
   };
@@ -141,7 +141,6 @@ export default function Home() {
   return (
     <>
       {errorMessage && <div className="error">{errorMessage}</div>}
-      {/* ガラスコンテナはタイトル、部屋作成、参加、待機画面にのみ適用 */}
       {(gameState === "title" ||
         gameState === "createRoom" ||
         gameState === "joinRoom" ||
@@ -192,13 +191,13 @@ export default function Home() {
           )}
         </div>
       ) : (
-        // ゲーム中やゲーム終了画面は従来の container を使う
         <div className="container">
           {gameState === "game" && (
             <GameScreen
               players={players}
               parentPlayer={parentPlayer}
               myId={myId}
+              myName={playerName}  // ← ここで playerName を myName として渡す
               currentCard={currentCard}
               onDrawCard={drawCard}
               hasDrawnCard={hasDrawnCard}

@@ -1,7 +1,9 @@
+// server/index.js (完全版)
 const express = require('express');
 const cors = require('cors');
 const http = require('http');
 const { Server } = require('socket.io');
+const { db } = require("./db"); // Firestoreへの接続(db.js)
 
 const app = express();
 const server = http.createServer(app);
@@ -16,26 +18,21 @@ const rooms = {};
 io.on('connection', (socket) => {
   console.log(`New client connected: ${socket.id}`);
 
+  // 部屋作成
   socket.on('createRoom', ({ roomId, playerName, deckName }) => {
-    if (rooms[roomId]) {
-      socket.emit('error', 'Room already exists');
-      return;
-    }
+    if (rooms[roomId]) return socket.emit('error', 'Room already exists');
 
     const allCards = Array.from({ length: 36 }, (_, i) =>
-      `${deckName.toLowerCase()}_${String(i + 1).padStart(5, '0')}.jpg`);
-
-    for (let i = allCards.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [allCards[i], allCards[j]] = [allCards[j], allCards[i]];
-    }
+      `${deckName.toLowerCase()}_${String(i + 1).padStart(5, '0')}.jpg`
+    ).sort(() => Math.random() - 0.5);
 
     rooms[roomId] = {
       players: [{ id: socket.id, name: playerName, points: 0 }],
       deck: allCards,
       currentTurnPlayerIndex: 0,
       onomatopoeiaList: [],
-      deckName
+      deckName,
+      currentCard: null,
     };
 
     socket.join(roomId);
@@ -43,94 +40,97 @@ io.on('connection', (socket) => {
     io.to(roomId).emit('updatePlayers', rooms[roomId].players);
   });
 
+  // 部屋参加
   socket.on('joinRoom', ({ roomId, playerName }) => {
-    console.log(`joinRoomが呼ばれました: 部屋(${roomId}), プレイヤー名(${playerName})`);
-  
-    if (!rooms[roomId]) {
-      socket.emit('error', 'Room does not exist');
-      console.log('エラー: 部屋が存在しません');
-      return;
-    }
-  
-    if (rooms[roomId].players.some(player => player.name === playerName)) {
-      socket.emit('error', 'Name already taken in this room');
-      console.log('エラー: 名前が重複しています');
-      return;
-    }
-  
+    if (!rooms[roomId]) return socket.emit('error', 'Room does not exist');
+    if (rooms[roomId].players.some(p => p.name === playerName))
+      return socket.emit('error', 'Name already taken');
+
     rooms[roomId].players.push({ id: socket.id, name: playerName, points: 0 });
     socket.join(roomId);
-    
     io.to(roomId).emit('updatePlayers', rooms[roomId].players);
-    console.log(`部屋(${roomId})のプレイヤー一覧を更新:`, rooms[roomId].players);
   });
 
+  // ゲーム開始
   socket.on('startGame', (roomId) => {
     const room = rooms[roomId];
     if (!room) return;
-    room.currentTurnPlayerIndex = Math.floor(Math.random() * room.players.length);
 
-    io.to(roomId).emit('updateRoomInfo', { deckName: room.deckName }); // デッキ情報送信
+    room.currentTurnPlayerIndex = Math.floor(Math.random() * room.players.length);
+    io.to(roomId).emit('updateRoomInfo', { deckName: room.deckName });
     io.to(roomId).emit('gameStarted', room.players[room.currentTurnPlayerIndex]);
   });
 
+  // カードを引く（親のみ）
   socket.on('drawCard', (roomId) => {
     const room = rooms[roomId];
-    if (!room) return;
-  
-    const currentPlayer = room.players[room.currentTurnPlayerIndex];
-    if (socket.id !== currentPlayer.id) return;
-  
+    if (!room || socket.id !== room.players[room.currentTurnPlayerIndex].id) return;
+
     const card = room.deck.pop();
     if (!card) {
-      // ゲーム終了直前に最終プレイヤー情報をコピー
-      const finalPlayers = [...room.players];
+      const finalPlayers = room.players;
       const maxPoints = Math.max(...finalPlayers.map(p => p.points));
       const winners = finalPlayers.filter(p => p.points === maxPoints);
       io.to(roomId).emit('gameOver', { winners, players: finalPlayers });
       return;
     }
+
+    room.currentCard = card;
     io.to(roomId).emit('cardDrawn', card);
   });
 
-  socket.on('submitOnomatopoeia', (roomId, onomatopoeia) => {
+  // ★★★ 修正：プレイヤー名もクライアントから受け取る ★★★
+  socket.on('submitOnomatopoeia', async (roomId, onomatopoeia, playerName) => {
     const room = rooms[roomId];
-    if (!room) {
-      console.log(`Room(${roomId})が見つかりません。`);
-      return;
-    }
-  
+    if (!room) return;
+
     room.onomatopoeiaList.push({ playerId: socket.id, onomatopoeia });
-    console.log(`オノマトペリスト(${roomId}):`, room.onomatopoeiaList);
-  
-    // プレイヤー数とオノマトペ数を確認
-    const expectedCount = room.players.length - 1;
-    const currentCount = room.onomatopoeiaList.length;
-    console.log(`必要なオノマトペ数: ${expectedCount}, 現在: ${currentCount}`);
-  
-    if (currentCount === expectedCount) {
+
+    const docData = {
+      roomId,
+      cardName: room.currentCard,
+      onomatopoeia,
+      playerId: socket.id,
+      playerName,  // クライアントから受け取った名前
+      timestamp: new Date().toISOString(),
+    };
+
+    try {
+      await db.collection("answers").add(docData);
+      console.log("Firestoreに保存完了:", docData);
+    } catch (error) {
+      console.error("Firestore保存失敗:", error);
+    }
+
+    if (room.onomatopoeiaList.length === room.players.length - 1) {
       const parentPlayer = room.players[room.currentTurnPlayerIndex];
-      console.log(`親プレイヤーに送信(${parentPlayer.name}, ${parentPlayer.id})`);
-  
-      const connectedSockets = Array.from(io.sockets.sockets.keys());
-      console.log(`現在の接続中のソケット一覧:`, connectedSockets);
-  
-      if (connectedSockets.includes(parentPlayer.id)) {
+      if (io.sockets.sockets.get(parentPlayer.id)) {
         io.to(parentPlayer.id).emit('onomatopoeiaList', room.onomatopoeiaList);
-        console.log('イベント送信成功');
-      } else {
-        console.log(`エラー：親プレイヤーのsocketID(${parentPlayer.id})は現在接続中ではありません。`);
       }
     }
   });
-  
 
-  socket.on('chooseOnomatopoeia', (roomId, selectedPlayerId) => {
+  // 親プレイヤーがオノマトペを選択
+  socket.on('chooseOnomatopoeia', async (roomId, selectedPlayerId) => {
     const room = rooms[roomId];
     if (!room) return;
 
     const chosenPlayer = room.players.find(p => p.id === selectedPlayerId);
     if (chosenPlayer) chosenPlayer.points += 1;
+
+    const chosenEntry = room.onomatopoeiaList.find(o => o.playerId === selectedPlayerId);
+    const parentPlayer = room.players[room.currentTurnPlayerIndex];
+
+    await db.collection("answers").add({
+      eventType: "choice",
+      roomId,
+      parentId: parentPlayer.id,
+      parentName: parentPlayer.name,
+      chosenPlayerId: chosenPlayer?.id,
+      chosenPlayerName: chosenPlayer?.name,
+      chosenOnomatopoeia: chosenEntry?.onomatopoeia,
+      timestamp: new Date().toISOString(),
+    });
 
     io.to(roomId).emit('onomatopoeiaChosen', {
       chosenPlayer,
@@ -139,13 +139,10 @@ io.on('connection', (socket) => {
 
     room.onomatopoeiaList = [];
 
-    // 山札が空になっていて、最後のオノマトペ選択の場合はゲーム終了！
     if (room.deck.length === 0) {
-      // ゲーム終了直前に最終プレイヤー情報をコピー
-      const finalPlayers = [...room.players];
-      const maxPoints = Math.max(...finalPlayers.map(p => p.points));
-      const winners = finalPlayers.filter(p => p.points === maxPoints);
-      io.to(roomId).emit('gameOver', { winners, players: finalPlayers });
+      const maxPoints = Math.max(...room.players.map(p => p.points));
+      const winners = room.players.filter(p => p.points === maxPoints);
+      io.to(roomId).emit('gameOver', { winners, players: room.players });
       return;
     }
 
@@ -153,27 +150,12 @@ io.on('connection', (socket) => {
     io.to(roomId).emit('newTurn', room.players[room.currentTurnPlayerIndex]);
   });
 
-
-  socket.on('nextTurn', (roomId) => {
-    const room = rooms[roomId];
-    if (!room) return;
-
-    room.onomatopoeiaList = [];
-
-    room.currentTurnPlayerIndex = (room.currentTurnPlayerIndex + 1) % room.players.length;
-    io.to(roomId).emit('newTurn', room.players[room.currentTurnPlayerIndex]);
-  });
-
-  socket.on('getRooms', () => {
-    socket.emit('roomsList', Object.keys(rooms));
-  });
-
+  // クライアント切断処理
   socket.on('disconnect', () => {
     Object.keys(rooms).forEach(roomId => {
-      rooms[roomId].players = rooms[roomId].players.filter(player => player.id !== socket.id);
+      rooms[roomId].players = rooms[roomId].players.filter(p => p.id !== socket.id);
       if (rooms[roomId].players.length === 0) {
         delete rooms[roomId];
-        io.emit('roomsList', Object.keys(rooms));
       } else {
         io.to(roomId).emit('updatePlayers', rooms[roomId].players);
       }
