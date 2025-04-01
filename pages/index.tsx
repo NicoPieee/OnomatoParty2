@@ -29,6 +29,7 @@ export default function Home() {
   const [hasDrawnCard, setHasDrawnCard] = useState(false);
   const [onomatopoeiaList, setOnomatopoeiaList] = useState([]);
   const [deckName, setDeckName] = useState("Stone");
+  const [usageStats, setUsageStats] = useState(null); // 追加：使用頻度情報
 
   useEffect(() => {
     socketRef.current = io(
@@ -71,7 +72,6 @@ export default function Home() {
       setOnomatopoeiaList([]);
     });
 
-    // 修正部分：イベントのペイロードが chosenPlayers 配列になっているのでそれに合わせる
     socketRef.current.on("onomatopoeiaChosen", (data) => {
       setPlayers(data.updatedPlayers);
       if (data.chosenPlayers && data.chosenPlayers.length > 0) {
@@ -82,9 +82,11 @@ export default function Home() {
       }
     });
 
-    socketRef.current.on("gameOver", ({ winners, players }) => {
+    // 修正：gameOver イベントで usageStats も受け取る
+    socketRef.current.on("gameOver", ({ winners, players, usageStats }) => {
       setWinners(winners);
       setPlayers(players);
+      setUsageStats(usageStats);
       setGameState("gameOver");
       setCurrentCard(null);
     });
@@ -121,7 +123,8 @@ export default function Home() {
 
   const submitOnomatopoeia = () => {
     if (onomatopoeia) {
-      socketRef.current.emit('submitOnomatopoeia', roomId, onomatopoeia, playerName); // playerNameを追加送信
+      // playerName を追加送信
+      socketRef.current.emit("submitOnomatopoeia", roomId, onomatopoeia, playerName);
       setOnomatopoeia("");
     }
   };
@@ -198,7 +201,7 @@ export default function Home() {
               players={players}
               parentPlayer={parentPlayer}
               myId={myId}
-              myName={playerName}  // playerName を myName として渡す
+              myName={playerName} // ここで myName を渡す
               currentCard={currentCard}
               onDrawCard={drawCard}
               hasDrawnCard={hasDrawnCard}
@@ -216,10 +219,12 @@ export default function Home() {
             <GameOverScreen
               winners={winners}
               players={players}
+              usageStats={usageStats} // ここで usageStats を渡す
               onReset={() => {
                 setGameState("title");
                 setPlayers([]);
                 setWinners(null);
+                setUsageStats(null);
                 setCurrentCard(null);
                 setRoomId("");
                 setPlayerName("");
