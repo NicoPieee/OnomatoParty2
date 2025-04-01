@@ -71,10 +71,11 @@ export default function Home() {
       setOnomatopoeiaList([]);
     });
 
+    // 修正部分：イベントのペイロードが chosenPlayers 配列になっているのでそれに合わせる
     socketRef.current.on("onomatopoeiaChosen", (data) => {
       setPlayers(data.updatedPlayers);
-      if (data.chosenPlayer) {
-        toast.success(`${data.chosenPlayer.name} がポイントを獲得しました！`, {
+      if (data.chosenPlayers && data.chosenPlayers.length > 0) {
+        toast.success(`${data.chosenPlayers.join(", ")} がポイントを獲得しました！`, {
           className: "custom-toast",
           icon: <span>🎉</span>,
         });
@@ -125,8 +126,8 @@ export default function Home() {
     }
   };
 
-  const chooseOnomatopoeia = (selectedPlayerId) => {
-    socketRef.current.emit("chooseOnomatopoeia", roomId, selectedPlayerId);
+  const chooseOnomatopoeia = (selectedOnomatopoeia) => {
+    socketRef.current.emit("chooseOnomatopoeia", roomId, selectedOnomatopoeia);
     setOnomatopoeiaList([]);
   };
 
@@ -197,7 +198,7 @@ export default function Home() {
               players={players}
               parentPlayer={parentPlayer}
               myId={myId}
-              myName={playerName}  // ← ここで playerName を myName として渡す
+              myName={playerName}  // playerName を myName として渡す
               currentCard={currentCard}
               onDrawCard={drawCard}
               hasDrawnCard={hasDrawnCard}

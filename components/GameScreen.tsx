@@ -1,21 +1,25 @@
-// components/GameScreen.tsx（完全修正版）
 import React, { useState, useEffect } from "react";
+
+interface OnomatopoeiaGroup {
+  onomatopoeia: string;
+  playerIds: string[];
+}
 
 interface GameScreenProps {
   players: any[];
   parentPlayer: any;
   myId: string;
-  myName: string;  // 追加
+  myName: string;
   currentCard: string | null;
   onDrawCard: () => void;
   hasDrawnCard: boolean;
-  onSendOnomatopoeia: () => void; // 元通りprops経由で呼び出し
-  onOnomatopoeiaChange: (e: React.ChangeEvent<HTMLInputElement>) => void; // 元通りprops経由
+  onSendOnomatopoeia: () => void;
+  onOnomatopoeiaChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onomatopoeia: string;
   onTurnTimeout: () => void;
   socketRef: any;
-  onomatopoeiaList: { playerId: string; onomatopoeia: string }[];
-  onChooseOnomatopoeia: (playerId: string) => void;
+  onomatopoeiaList: OnomatopoeiaGroup[];
+  onChooseOnomatopoeia: (selectedOnomatopoeia: string) => void;
   deckName: string;
 }
 
@@ -44,6 +48,7 @@ export default function GameScreen({
     ? `/images/${deckName}/${currentCard}`
     : "/images/fallback.jpg";
 
+  // カードが引かれたらタイマーをリセットする
   useEffect(() => {
     if (currentCard) {
       setTimeLeft(60);
@@ -54,10 +59,11 @@ export default function GameScreen({
     }
   }, [currentCard]);
 
+  // タイマーのカウントダウン処理
   useEffect(() => {
     if (!timerActive) return;
     const timer = setInterval(() => {
-      setTimeLeft((prev) => (prev <= 1 ? 0 : prev - 1));
+      setTimeLeft(prev => (prev <= 1 ? 0 : prev - 1));
     }, 1000);
     return () => clearInterval(timer);
   }, [timerActive]);
@@ -90,9 +96,9 @@ export default function GameScreen({
               </>
             ) : (
               <div className="onomatopoeia-list">
-                {onomatopoeiaList.map((item, idx) => (
-                  <button key={idx} onClick={() => onChooseOnomatopoeia(item.playerId)}>
-                    {item.onomatopoeia}
+                {onomatopoeiaList.map((group, idx) => (
+                  <button key={idx} onClick={() => onChooseOnomatopoeia(group.onomatopoeia)}>
+                    {group.onomatopoeia}
                   </button>
                 ))}
               </div>
@@ -106,7 +112,10 @@ export default function GameScreen({
               placeholder="オノマトペを入力してください"
             />
             <button
-              onClick={onSendOnomatopoeia}
+              onClick={() => {
+                onSendOnomatopoeia();
+                setHasSentOnomatopoeia(true);
+              }}
               disabled={!currentCard || hasSentOnomatopoeia || !onomatopoeia}
             >
               送信
